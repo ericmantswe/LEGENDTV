@@ -298,27 +298,11 @@ export default function App() {
               </span>
             </div>
             <div className="top-actions">
-              <button
-                className={`top-btn ${captionsEnabled ? 'top-btn-active' : ''}`}
-                onClick={e => { e.stopPropagation(); toggleCaptions(); }}
-                title="Toggle English Captions (C)"
-              >
-                {captionsEnabled ? '💬 CC: ON' : '💬 CC: OFF'}
-              </button>
-              <button className="top-btn" onClick={e => { e.stopPropagation(); setShowCountryModal(true); }}>
-                {activeCountryFlag} Country
-              </button>
               <button className="top-btn" onClick={e => { e.stopPropagation(); toggleGuide(); }}>
                 📺 Guide (G)
               </button>
               <button className="top-btn" onClick={e => { e.stopPropagation(); toggleFullscreen(); }}>
                 {isFullscreen ? '⛶ Exit' : '⛶ Fullscreen'}
-              </button>
-              <button className="top-btn" onClick={e => { e.stopPropagation(); setShowApiBrowser(true); }}>
-                🌐 IPTV-org
-              </button>
-              <button className="top-btn" onClick={e => { e.stopPropagation(); setShowRemote(r => !r); }}>
-                🎮 Remote
               </button>
             </div>
           </div>

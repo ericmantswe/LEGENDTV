@@ -62,7 +62,8 @@ export default function VideoPlayer({ channel, volume, isMuted, captionsEnabled 
         levelLoadingMaxRetry: 3,
         fragLoadingMaxRetry: 4,
         fetchSetup,
-        renderTextTracksNatively: false, // Custom caption rendering
+        renderTextTracksNatively: true, // Native browser rendering ensures subtitles display directly on video
+        enableCEA608Captions: true,
       });
       hlsRef.current = hls;
 
@@ -73,25 +74,25 @@ export default function VideoPlayer({ channel, volume, isMuted, captionsEnabled 
         video.play().catch(() => {});
         setStatus('playing');
 
-        // Look for English subtitle tracks in HLS manifest
-        if (hls.subtitleTracks && hls.subtitleTracks.length > 0) {
+        // Look for English or available subtitle tracks in HLS manifest
+        if (hls.subtitleTracks && hls.subtitleTracks.length > 0 && captionsEnabled) {
           const enIdx = hls.subtitleTracks.findIndex(t =>
-            t.lang?.toLowerCase().startsWith('en') || t.name?.toLowerCase().includes('english')
+            t.lang?.toLowerCase().startsWith('en') || t.name?.toLowerCase().includes('english') || t.name?.toLowerCase().includes('cc')
           );
-          if (enIdx !== -1) {
-            hls.subtitleTrack = enIdx;
-          }
+          hls.subtitleTrack = enIdx !== -1 ? enIdx : 0;
+          hls.subtitleDisplay = true;
         }
       });
 
       // Handle subtitle cues when HLS subtitles fire
       hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, (_, data) => {
-        if (!data.subtitleTracks) return;
-        const enIdx = data.subtitleTracks.findIndex(t =>
-          t.lang?.toLowerCase().startsWith('en') || t.name?.toLowerCase().includes('english')
-        );
-        if (enIdx !== -1 && captionsEnabled) {
-          hls.subtitleTrack = enIdx;
+        if (!data.subtitleTracks || data.subtitleTracks.length === 0) return;
+        if (captionsEnabled) {
+          const enIdx = data.subtitleTracks.findIndex(t =>
+            t.lang?.toLowerCase().startsWith('en') || t.name?.toLowerCase().includes('english') || t.name?.toLowerCase().includes('cc')
+          );
+          hls.subtitleTrack = enIdx !== -1 ? enIdx : 0;
+          hls.subtitleDisplay = true;
         }
       });
 
@@ -143,6 +144,25 @@ export default function VideoPlayer({ channel, volume, isMuted, captionsEnabled 
     };
   }, [channel?.url, channel?.httpReferrer, channel?.userAgent]);
 
+  /* ── Dynamic HLS subtitle track toggle when captionsEnabled changes ─ */
+  useEffect(() => {
+    if (!hlsRef.current) return;
+    const hls = hlsRef.current;
+    if (captionsEnabled) {
+      if (hls.subtitleTracks && hls.subtitleTracks.length > 0) {
+        const enIdx = hls.subtitleTracks.findIndex(t =>
+          t.lang?.toLowerCase().startsWith('en') || t.name?.toLowerCase().includes('english') || t.name?.toLowerCase().includes('cc')
+        );
+        hls.subtitleTrack = enIdx !== -1 ? enIdx : 0;
+        hls.subtitleDisplay = true;
+      }
+    } else {
+      hls.subtitleTrack = -1;
+      hls.subtitleDisplay = false;
+      setActiveCaption('');
+    }
+  }, [captionsEnabled]);
+
   /* ── Native TextTracks listener (for CEA-608 & WebVTT) ─── */
   useEffect(() => {
     const video = videoRef.current;
@@ -152,23 +172,33 @@ export default function VideoPlayer({ channel, volume, isMuted, captionsEnabled 
       if (!captionsEnabled) return;
       const track = e.target;
       if (track.activeCues && track.activeCues.length > 0) {
-        const text = Array.from(track.activeCues).map(c => c.text).join(' ');
+        const text = Array.from(track.activeCues).map(c => c.text).filter(Boolean).join(' ');
         if (text) pushCaption(text);
       }
     };
 
-    const tracks = video.textTracks;
-    for (let i = 0; i < tracks.length; i++) {
-      const tr = tracks[i];
-      if (tr.language?.startsWith('en') || tr.kind === 'captions' || tr.kind === 'subtitles') {
-        tr.mode = captionsEnabled ? 'hidden' : 'disabled'; // hidden allows cue events to fire for custom render
-        tr.addEventListener('cuechange', handleCueChange);
-      }
+    const attachTrack = (tr) => {
+      if (!tr) return;
+      tr.mode = captionsEnabled ? 'showing' : 'disabled';
+      tr.removeEventListener('cuechange', handleCueChange);
+      tr.addEventListener('cuechange', handleCueChange);
+    };
+
+    for (let i = 0; i < video.textTracks.length; i++) {
+      attachTrack(video.textTracks[i]);
     }
 
+    const onAddTrack = (e) => {
+      attachTrack(e.track);
+    };
+    video.textTracks.addEventListener('addtrack', onAddTrack);
+
     return () => {
-      for (let i = 0; i < tracks.length; i++) {
-        tracks[i].removeEventListener('cuechange', handleCueChange);
+      if (video.textTracks) {
+        video.textTracks.removeEventListener('addtrack', onAddTrack);
+        for (let i = 0; i < video.textTracks.length; i++) {
+          video.textTracks[i].removeEventListener('cuechange', handleCueChange);
+        }
       }
     };
   }, [captionsEnabled, status]);
