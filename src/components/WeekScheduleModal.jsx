@@ -173,3 +173,4 @@ export default function WeekScheduleModal({ channel, countryCode = 'US', onClose
     </div>
   );
 }
+
