@@ -1,0 +1,576 @@
+/* ============================================================
+   LEGEND ER TV — Glassmorphism Design System
+   Frosted Glass, Collapsible Sidebar, Precise Typography
+   ============================================================ */
+
+/* ── Fullscreen Overlay Wrapper (Video shows directly through) ── */
+.lg-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ── Floating Glass Search Bar ── */
+.lg-glass-search {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(540px, 90vw);
+  padding: 10px 16px;
+  background: rgba(12, 22, 45, 0.65);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  animation: lgFadeDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes lgFadeDown {
+  from { opacity: 0; transform: translate(-50%, -10px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.lg-search-icon {
+  color: rgba(255, 255, 255, 0.55);
+  flex-shrink: 0;
+}
+
+.lg-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-size: 14.5px;
+  font-family: inherit;
+}
+
+.lg-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.lg-search-clear {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.7);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.lg-search-clear:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+/* ── Frosted Glass Left Container (Sidebar + Channels) ── */
+.lg-glass-panel {
+  display: flex;
+  height: 100%;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(14, 24, 48, 0.68) 0%, rgba(6, 12, 28, 0.78) 100%);
+  backdrop-filter: blur(32px) saturate(190%);
+  -webkit-backdrop-filter: blur(32px) saturate(190%);
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Collapsible Glass Sidebar ── */
+.lg-sidebar {
+  width: 172px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 22px 0 20px 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(8, 15, 34, 0.35);
+  transition: width 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lg-sidebar.sidebar-min {
+  width: 58px;
+}
+
+/* Toggle button header */
+.lg-sidebar-toggle-wrap {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 12px 14px;
+}
+
+.lg-sidebar.sidebar-min .lg-sidebar-toggle-wrap {
+  justify-content: center;
+  padding: 0 0 14px;
+}
+
+.lg-sidebar-toggle {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.65);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.lg-sidebar-toggle:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45);
+}
+
+/* Navigation items list */
+.lg-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  justify-content: center;
+}
+
+.lg-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 18px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.14s ease;
+  white-space: nowrap;
+}
+
+.lg-sidebar.sidebar-min .lg-nav-btn {
+  justify-content: center;
+  padding: 14px 0;
+}
+
+.lg-nav-btn:hover:not(.lg-nav-on) {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+/* Active Nav State: Vibrant Solid Blue matching the reference UI */
+.lg-nav-on {
+  background: linear-gradient(90deg, #1d4ed8 0%, #2563eb 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 18px rgba(37, 99, 235, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.lg-nav-icon {
+  flex-shrink: 0;
+}
+
+.lg-nav-label {
+  flex: 1;
+  text-align: right;
+  line-height: 1;
+}
+
+/* Country indicator button at bottom of sidebar */
+.lg-country-btn {
+  margin: 12px 10px 0;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  transition: all 0.14s;
+  overflow: hidden;
+}
+
+.lg-sidebar.sidebar-min .lg-country-btn {
+  margin: 12px 8px 0;
+  padding: 8px 0;
+  justify-content: center;
+}
+
+.lg-country-btn:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+}
+
+.lg-country-flag {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.lg-country-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Channel Column (Numbers + Logos) ── */
+.lg-ch-col {
+  width: 204px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  background: rgba(5, 10, 24, 0.25);
+}
+
+.lg-empty {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  padding: 24px 16px;
+  letter-spacing: 0.5px;
+}
+
+/* Channel row items */
+.lg-ch-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px 0 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: background 0.12s ease;
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.lg-ch-row:hover:not(.lg-ch-sel) {
+  background: #2563eb;
+  color: #fff;
+}
+
+.lg-ch-row:hover:not(.lg-ch-sel) .lg-ch-num {
+  color: #fff;
+}
+
+/* Selected Channel Row: Big Frosted Solid Blue Card */
+.lg-ch-sel {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.95) 0%, rgba(29, 78, 216, 0.9) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: 0 10px 32px rgba(29, 78, 216, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 10px 14px;
+  gap: 0;
+  border-radius: 4px;
+}
+
+.lg-sel-top {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
+}
+
+.lg-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 8px #4ade80;
+  flex-shrink: 0;
+  animation: lgDotPulse 1.8s infinite;
+}
+
+@keyframes lgDotPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.3; transform: scale(0.85); }
+}
+
+.lg-sel-num {
+  font-size: 24px;
+  font-weight: 300;
+  color: #ffffff;
+  letter-spacing: 1px;
+  line-height: 1;
+}
+
+.lg-sel-logo {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.lg-sel-img {
+  max-width: 154px;
+  max-height: 58px;
+  object-fit: contain;
+  filter: brightness(1.08) drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
+}
+
+.lg-sel-fallback {
+  font-size: 22px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 2px;
+}
+
+/* Normal channel row items */
+.lg-ch-num {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.52);
+  min-width: 38px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.lg-ch-live {
+  color: #93c5fd;
+  font-weight: 700;
+}
+
+.lg-logo-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 30px;
+  overflow: hidden;
+}
+
+.lg-ch-logo {
+  max-width: 80px;
+  max-height: 28px;
+  object-fit: contain;
+  opacity: 0.9;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
+}
+
+.lg-ch-fallback {
+  font-size: 11px;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 85px;
+}
+
+.lg-star {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+  flex-shrink: 0;
+  line-height: 1;
+  transition: all 0.12s ease;
+}
+
+.lg-star:hover {
+  color: #f59e0b;
+  transform: scale(1.25);
+}
+
+.lg-star-on {
+  color: #f59e0b;
+  text-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+}
+
+/* ── Program Column: Translucent text floating over the video ── */
+.lg-progs {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 28px 0 32px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.lg-prog-row {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.lg-prog-sel {
+  justify-content: center;
+  gap: 4px;
+}
+
+.lg-prog-title {
+  font-size: 21px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.95);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.85);
+  margin: 0;
+}
+
+.lg-prog-dim {
+  font-size: 18px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.62);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.75);
+  margin: 0;
+  transition: color 0.1s;
+}
+
+.lg-prog-row:hover .lg-prog-dim {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.lg-prog-next {
+  font-size: 18px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.78);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.75);
+  margin: 0;
+}
+
+.lg-on-now {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4ade80;
+  letter-spacing: 0.3px;
+  margin: 0;
+  line-height: 1;
+  text-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+}
+
+.lg-on-next {
+  font-size: 13px;
+  font-weight: 600;
+  color: #34d399;
+  opacity: 0.82;
+  letter-spacing: 0.3px;
+  margin: 0;
+  line-height: 1;
+}
+
+/* ── Frosted Glass Clock (Top-Right) ── */
+.lg-clock-glass {
+  position: absolute;
+  top: 22px;
+  right: 28px;
+  z-index: 30;
+  padding: 8px 16px;
+  background: rgba(10, 18, 38, 0.55);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  font-size: 17px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.95);
+  letter-spacing: 0.5px;
+  pointer-events: none;
+}
+
+/* ── Bottom Frosted Glass Navigation Hints ── */
+.lg-kbd-glass {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  gap: 18px;
+  padding: 8px 20px;
+  background: rgba(10, 18, 38, 0.6);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 11.5px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.lg-kbd-glass kbd {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-family: inherit;
+  color: #fff;
+  margin-right: 4px;
+}
+
+/* ── Responsive adjustments ── */
+@media (max-width: 850px) {
+  .lg-progs {
+    display: none;
+  }
+  .lg-ch-col {
+    width: 240px;
+  }
+}
+
+@media (max-width: 580px) {
+  .lg-sidebar {
+    width: 58px !important;
+  }
+  .lg-nav-label,
+  .lg-country-text {
+    display: none !important;
+  }
+  .lg-nav-btn {
+    justify-content: center !important;
+    padding: 14px 0 !important;
+  }
+  .lg-sidebar-toggle-wrap {
+    display: none !important;
+  }
+}

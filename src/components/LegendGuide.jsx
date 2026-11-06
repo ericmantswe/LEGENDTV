@@ -1,121 +1,36 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { getCurrentAndNextProgram, formatTimeRange } from '../utils/epgGenerator.js';
+import { getCurrentAndNextProgram } from '../utils/epgGenerator.js';
 import { sounds } from '../utils/audioFX.js';
+import {
+  Tv,
+  Star,
+  Search,
+  Globe,
+  Sliders,
+  Settings,
+  PanelLeftClose,
+  PanelLeftOpen,
+} from 'lucide-react';
+import './LegendGuide.css';
+
+/* ── Constants ──────────────────────────────────────────── */
+const VISIBLE = 7;    // rows visible at once (3 above + selected + 3 below)
+const ROW_H   = 56;   // px — normal channel row height
+const SEL_H   = 112;  // px — selected channel row height (2× normal)
 
 const NAV_ITEMS = [
-  { id: 'live',      label: 'LIVE TV' },
-  { id: 'favorites', label: 'FAVORITES' },
-  { id: 'search',    label: 'SEARCH' },
-  { id: 'countries', label: 'COUNTRIES' },
-  { id: 'api',       label: 'IPTV-ORG' },
-  { id: 'remote',    label: 'REMOTE' },
+  { id: 'settings',  label: 'SETTINGS',  icon: Settings },
+  { id: 'search',    label: 'SEARCH',    icon: Search   },
+  { id: 'live',      label: 'LIVE TV',   icon: Tv       },
+  { id: 'favorites', label: 'FAVORITES', icon: Star     },
+  { id: 'countries', label: 'COUNTRIES', icon: Globe    },
+  { id: 'iptv',      label: 'IPTV-ORG',  icon: Sliders  },
 ];
 
-function formatClock(d) {
+function fmtClock(d) {
   return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
-/* ─── Program Details Panel ─────────────────────────────────────── */
-function ProgramDetails({ channel, isFav, onToggleFav, onWatch, isCurrent }) {
-  const [epg, setEpg] = useState(null);
-
-  useEffect(() => {
-    if (!channel) return;
-    setEpg(getCurrentAndNextProgram(channel, new Date()));
-    const t = setInterval(() => setEpg(getCurrentAndNextProgram(channel, new Date())), 30000);
-    return () => clearInterval(t);
-  }, [channel?.number]);
-
-  if (!channel) return null;
-  const { current, next } = epg || {};
-
-  return (
-    <div className="lg-prog-details">
-      {/* Channel header */}
-      <div className="lg-prog-header">
-        <div className="lg-prog-ch-info">
-          <div className="lg-prog-ch-logo-wrap">
-            {channel.logo ? (
-              <img
-                src={channel.logo}
-                alt={channel.name}
-                className="lg-prog-ch-logo"
-                onError={e => { e.target.style.display = 'none'; }}
-              />
-            ) : (
-              <span className="lg-prog-ch-fallback">
-                {(channel.callsign || channel.name).slice(0, 4).toUpperCase()}
-              </span>
-            )}
-          </div>
-          <div>
-            <div className="lg-prog-ch-num">CH {String(channel.number).padStart(3, '0')}</div>
-            <div className="lg-prog-ch-name">{channel.name}</div>
-            {channel.country && (
-              <div className="lg-prog-ch-country">{channel.country}</div>
-            )}
-          </div>
-        </div>
-
-        <div className="lg-prog-actions">
-          <button
-            className={`lg-fav-action ${isFav ? 'lg-fav-active' : ''}`}
-            onClick={() => { onToggleFav(channel.number); sounds.playClick(); }}
-            title={isFav ? 'Remove from Favorites' : 'Add to Favorites'}
-          >
-            {isFav ? '★ Saved' : '☆ Favorite'}
-          </button>
-          <button className="lg-watch-btn" onClick={onWatch}>
-            ▶ {isCurrent ? 'Watch Live' : 'Tune In'}
-          </button>
-        </div>
-      </div>
-
-      {/* Divider */}
-      <div className="lg-prog-divider" />
-
-      {/* Program list */}
-      <div className="lg-prog-list">
-        {current && (
-          <div className="lg-prog-item">
-            <div className="lg-prog-status on-now">On Now</div>
-            <div className="lg-prog-title">{current.title}</div>
-            {current.description && (
-              <div className="lg-prog-desc">{current.description}</div>
-            )}
-            <div className="lg-prog-time">{formatTimeRange(current.startTime, current.endTime)}</div>
-          </div>
-        )}
-        {next && (
-          <div className="lg-prog-item">
-            <div className="lg-prog-status on-next">On Next</div>
-            <div className="lg-prog-title">{next.title}</div>
-            {next.description && (
-              <div className="lg-prog-desc">{next.description}</div>
-            )}
-            <div className="lg-prog-time">{formatTimeRange(next.startTime, next.endTime)}</div>
-          </div>
-        )}
-        {!current && !next && (
-          <div className="lg-prog-no-info">
-            <p>Live stream • No EPG data</p>
-            <p>Tune in to watch live</p>
-          </div>
-        )}
-      </div>
-
-      {/* Keyboard hint */}
-      <div className="lg-kbd-hints">
-        <span><kbd>↑↓</kbd> Navigate</span>
-        <span><kbd>Enter</kbd> Watch</span>
-        <span><kbd>F</kbd> Favorite</span>
-        <span><kbd>G / Esc</kbd> Close Guide</span>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Main LegendGuide Component ────────────────────────────────── */
 export default function LegendGuide({
   channels,
   currentChannel,
@@ -126,129 +41,128 @@ export default function LegendGuide({
   onOpenCountryModal,
   onOpenApiBrowser,
   onShowRemote,
-  activeCountry,
-  activeCountryName,
   activeCountryFlag,
+  activeCountryName,
   isFullscreen,
   onToggleFullscreen,
 }) {
-  const [activeTab, setActiveTab] = useState('live');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedIdx, setSelectedIdx] = useState(() => {
-    const idx = channels.findIndex(c => c.number === currentChannel?.number);
-    return idx !== -1 ? idx : 0;
+  const [tab, setTab] = useState('live');
+  const [query, setQuery] = useState('');
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('legend_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [selIdx, setSelIdx] = useState(() => {
+    const i = channels.findIndex(c => c.number === currentChannel?.number);
+    return i !== -1 ? i : 0;
   });
   const [clock, setClock] = useState(new Date());
-  const listRef = useRef(null);
-  const selectedItemRef = useRef(null);
-  const searchInputRef = useRef(null);
+  const searchRef = useRef(null);
 
-  // Live clock
+  /* Clock tick */
   useEffect(() => {
     const t = setInterval(() => setClock(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
 
-  // Focus search input when switching to search tab
-  useEffect(() => {
-    if (activeTab === 'search') {
-      setTimeout(() => searchInputRef.current?.focus(), 50);
-    }
-  }, [activeTab]);
+  /* Save sidebar state */
+  const toggleSidebar = useCallback(() => {
+    sounds.playClick();
+    setIsCollapsed(prev => {
+      const next = !prev;
+      try { localStorage.setItem('legend_sidebar_collapsed', String(next)); } catch {}
+      return next;
+    });
+  }, []);
 
-  // Filter channels based on tab + search
-  const displayChannels = useMemo(() => {
+  /* Auto-focus search */
+  useEffect(() => {
+    if (tab === 'search') setTimeout(() => searchRef.current?.focus(), 60);
+  }, [tab]);
+
+  /* Filtered channel list */
+  const list = useMemo(() => {
     let chs = channels;
-    if (activeTab === 'favorites') {
-      chs = channels.filter(ch => favorites.includes(ch.number));
-    }
-    const q = searchQuery.trim().toLowerCase();
+    if (tab === 'favorites') chs = channels.filter(c => favorites.includes(c.number));
+    const q = query.trim().toLowerCase();
     if (q) {
-      chs = chs.filter(ch =>
-        ch.name.toLowerCase().includes(q) ||
-        (ch.callsign || '').toLowerCase().includes(q) ||
-        String(ch.number).includes(q) ||
-        (ch.country || '').toLowerCase().includes(q)
+      chs = chs.filter(c =>
+        c.name.toLowerCase().includes(q) ||
+        (c.callsign || '').toLowerCase().includes(q) ||
+        String(c.number).includes(q)
       );
     }
     return chs;
-  }, [channels, activeTab, searchQuery, favorites]);
+  }, [channels, tab, query, favorites]);
 
-  const selectedChannel = displayChannels[Math.min(selectedIdx, displayChannels.length - 1)] || null;
+  /* Windowed view centered on selected */
+  const safe    = Math.min(selIdx, Math.max(0, list.length - 1));
+  const half    = Math.floor(VISIBLE / 2); // 3
+  const wStart  = Math.max(0, Math.min(safe - half, Math.max(0, list.length - VISIBLE)));
+  const visible = list.slice(wStart, wStart + VISIBLE);
+  const selWin  = safe - wStart; // index in visible[]
 
-  // Scroll selected item into view
-  useEffect(() => {
-    if (selectedItemRef.current) {
-      selectedItemRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    }
-  }, [selectedIdx, displayChannels.length]);
-
-  // Reset selectedIdx when channels change
-  useEffect(() => {
-    setSelectedIdx(0);
-  }, [displayChannels.length, activeTab]);
-
-  const handleTabChange = useCallback((tabId) => {
+  /* Tab / action handler */
+  const changeTab = useCallback((id) => {
     sounds.playClick();
-    if (tabId === 'countries') { onOpenCountryModal(); return; }
-    if (tabId === 'api')       { onOpenApiBrowser(); return; }
-    if (tabId === 'remote')    { onShowRemote?.(); return; }
-    setActiveTab(tabId);
-    setSelectedIdx(0);
-    if (tabId !== 'search') setSearchQuery('');
+    if (id === 'countries') { onOpenCountryModal(); return; }
+    if (id === 'iptv')      { onOpenApiBrowser();   return; }
+    if (id === 'settings')  { onShowRemote?.();     return; }
+    setTab(id);
+    setSelIdx(0);
+    if (id !== 'search') setQuery('');
   }, [onOpenCountryModal, onOpenApiBrowser, onShowRemote]);
 
-  const handleSelectAndWatch = useCallback((ch) => {
+  /* Tune + close */
+  const watchCh = useCallback((ch) => {
+    if (!ch) return;
     sounds.playChannelSwitch();
     onSelectChannel(ch);
     onCloseGuide();
   }, [onSelectChannel, onCloseGuide]);
 
-  const handleSelectInList = useCallback((ch, idx) => {
-    setSelectedIdx(idx);
-    sounds.playClick();
-    onSelectChannel(ch);
-  }, [onSelectChannel]);
-
-  // Keyboard navigation
+  /* Keyboard controls */
   useEffect(() => {
-    const handleKey = (e) => {
-      const inInput = ['INPUT', 'TEXTAREA'].includes(e.target.tagName);
-
+    const onKey = (e) => {
+      const inp = ['INPUT', 'TEXTAREA'].includes(e.target.tagName);
       switch (e.key) {
         case 'ArrowUp':
-          if (inInput) return;
+          if (inp) return;
           e.preventDefault();
           sounds.playClick();
-          setSelectedIdx(prev => Math.max(0, prev - 1));
+          setSelIdx(p => Math.max(0, p - 1));
           break;
         case 'ArrowDown':
-          if (inInput) return;
+          if (inp) return;
           e.preventDefault();
           sounds.playClick();
-          setSelectedIdx(prev => Math.min(displayChannels.length - 1, prev + 1));
+          setSelIdx(p => Math.min(list.length - 1, p + 1));
           break;
         case 'Enter':
-          if (inInput) return;
+          if (inp) return;
           e.preventDefault();
-          if (selectedChannel) handleSelectAndWatch(selectedChannel);
+          if (list[safe]) watchCh(list[safe]);
           break;
         case 'f':
         case 'F':
-          if (inInput) return;
-          if (selectedChannel) {
-            onToggleFavorite(selectedChannel.number);
+          if (inp) return;
+          if (list[safe]) {
+            onToggleFavorite(list[safe].number);
             sounds.playClick();
           }
           break;
-        case 'Escape':
+        case '[':
+          if (inp) return;
           e.preventDefault();
-          sounds.playGuideSound(false);
-          onCloseGuide();
+          toggleSidebar();
           break;
+        case 'Escape':
         case 'g':
         case 'G':
-          if (inInput) return;
+          if (inp && e.key !== 'Escape') return;
           e.preventDefault();
           sounds.playGuideSound(false);
           onCloseGuide();
@@ -257,165 +171,217 @@ export default function LegendGuide({
           break;
       }
     };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [displayChannels, selectedChannel, handleSelectAndWatch, onCloseGuide, onToggleFavorite]);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [list, safe, watchCh, onCloseGuide, onToggleFavorite, toggleSidebar]);
 
   return (
-    <div className="legend-guide-wrap">
-      {/* Guide panels */}
-      <div className="legend-guide-panels">
+    <div className="lg-wrap">
 
-        {/* ── Left Sidebar ──────────────────────────────── */}
-        <div className="lg-sidebar">
-          <div className="lg-sidebar-brand">
-            <span className="lg-brand-legend">LEGEND</span>
-            <span className="lg-brand-er"> ER</span>
-            <span className="lg-brand-tv"> TV</span>
-          </div>
-
-          <nav className="lg-nav">
-            {NAV_ITEMS.map(item => (
-              <button
-                key={item.id}
-                className={`lg-nav-item ${activeTab === item.id ? 'lg-nav-active' : ''}`}
-                onClick={() => handleTabChange(item.id)}
-              >
-                {item.label}
-              </button>
-            ))}
-          </nav>
-
-          {/* Active country indicator */}
-          <div className="lg-sidebar-footer">
-            <button
-              className="lg-country-pill"
-              onClick={onOpenCountryModal}
-              title="Change country lineup"
-            >
-              <span>{activeCountryFlag || '🌐'}</span>
-              <span className="lg-country-name">{activeCountryName || 'Global'}</span>
-            </button>
-            <button
-              className="lg-fullscreen-btn"
-              onClick={onToggleFullscreen}
-              title={isFullscreen ? 'Exit Fullscreen (F)' : 'Fullscreen (F)'}
-            >
-              {isFullscreen ? '⛶ Exit' : '⛶ Maximize'}
-            </button>
-          </div>
-        </div>
-
-        {/* ── Channel List ───────────────────────────────── */}
-        <div className="lg-channel-col">
-          {/* Search bar (always visible in search tab) */}
-          {activeTab === 'search' && (
-            <div className="lg-search-bar">
-              <input
-                ref={searchInputRef}
-                type="text"
-                className="lg-search-input"
-                placeholder="Search channels, numbers…"
-                value={searchQuery}
-                onChange={e => { setSearchQuery(e.target.value); setSelectedIdx(0); }}
-                autoFocus
-              />
-              {searchQuery && (
-                <button className="lg-search-clear" onClick={() => setSearchQuery('')}>✕</button>
-              )}
-            </div>
+      {/* Floating Glass Search Bar (active when tab === 'search') */}
+      {tab === 'search' && (
+        <div className="lg-glass-search">
+          <Search size={18} className="lg-search-icon" />
+          <input
+            ref={searchRef}
+            className="lg-search-input"
+            type="text"
+            placeholder="Search channels, numbers, categories…"
+            value={query}
+            onChange={e => { setQuery(e.target.value); setSelIdx(0); }}
+          />
+          {query && (
+            <button className="lg-search-clear" onClick={() => setQuery('')}>✕</button>
           )}
+        </div>
+      )}
 
-          {/* Channel count badge */}
-          <div className="lg-ch-count">
-            {displayChannels.length} channel{displayChannels.length !== 1 ? 's' : ''}
-            {activeTab === 'favorites' && favorites.length === 0 && (
-              <span className="lg-fav-hint"> • Press F to favorite</span>
-            )}
+      {/* ── Frosted Glass Left Container ─────────────────── */}
+      <div className={`lg-glass-panel ${isCollapsed ? 'lg-collapsed' : ''}`}>
+
+        {/* Collapsible Sidebar */}
+        <nav className={`lg-sidebar ${isCollapsed ? 'sidebar-min' : ''}`}>
+          {/* Collapse / Expand Toggle Button */}
+          <div className="lg-sidebar-toggle-wrap">
+            <button
+              className="lg-sidebar-toggle"
+              onClick={toggleSidebar}
+              title={isCollapsed ? 'Expand sidebar ([)' : 'Collapse sidebar ([)'}
+              aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              {isCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+            </button>
           </div>
 
-          {/* Channel scroll list */}
-          <div className="lg-ch-list" ref={listRef}>
-            {displayChannels.length === 0 && (
-              <div className="lg-empty-state">
-                {activeTab === 'favorites' ? (
-                  <>
-                    <span>⭐</span>
-                    <p>No favorites yet</p>
-                    <p>Browse channels and press F</p>
-                  </>
-                ) : (
-                  <>
-                    <span>🔍</span>
-                    <p>No channels found</p>
-                    <p>Try a different search</p>
-                  </>
-                )}
-              </div>
-            )}
-
-            {displayChannels.map((ch, idx) => {
-              const isSelected = idx === selectedIdx;
-              const isCurrent = ch.number === currentChannel?.number;
-              const isFav = favorites.includes(ch.number);
+          {/* Navigation Items */}
+          <div className="lg-nav-list">
+            {NAV_ITEMS.map(item => {
+              const Icon = item.icon;
+              const isActive = tab === item.id;
               return (
-                <div
-                  key={ch.number}
-                  ref={isSelected ? selectedItemRef : null}
-                  className={[
-                    'lg-ch-item',
-                    isSelected ? 'lg-ch-selected' : '',
-                    isCurrent ? 'lg-ch-current' : '',
-                  ].join(' ')}
-                  onClick={() => handleSelectInList(ch, idx)}
-                  onDoubleClick={() => handleSelectAndWatch(ch)}
+                <button
+                  key={item.id}
+                  className={`lg-nav-btn ${isActive ? 'lg-nav-on' : ''}`}
+                  onClick={() => changeTab(item.id)}
+                  title={isCollapsed ? item.label : undefined}
                 >
-                  <span className="lg-ch-num">{String(ch.number).padStart(3, '0')}</span>
-
-                  <div className="lg-ch-logo-wrap">
-                    {ch.logo ? (
-                      <img
-                        src={ch.logo}
-                        alt={ch.name}
-                        className="lg-ch-logo"
-                        onError={e => { e.target.style.display = 'none'; }}
-                      />
-                    ) : (
-                      <span className="lg-ch-fallback">
-                        {(ch.callsign || ch.name).slice(0, 5).toUpperCase()}
-                      </span>
-                    )}
-                  </div>
-
-                  {isCurrent && <span className="lg-live-dot" title="Tuned" />}
-
-                  <button
-                    className={`lg-fav-btn ${isFav ? 'lg-fav-on' : ''}`}
-                    onClick={e => { e.stopPropagation(); onToggleFavorite(ch.number); sounds.playClick(); }}
-                    title={isFav ? 'Remove from favorites' : 'Add to favorites'}
-                  >
-                    {isFav ? '★' : '☆'}
-                  </button>
-                </div>
+                  <Icon size={18} className="lg-nav-icon" />
+                  {!isCollapsed && <span className="lg-nav-label">{item.label}</span>}
+                </button>
               );
             })}
           </div>
-        </div>
 
-        {/* ── Program Details ─────────────────────────────── */}
-        <div className="lg-program-col">
-          <ProgramDetails
-            channel={selectedChannel}
-            isFav={selectedChannel ? favorites.includes(selectedChannel.number) : false}
-            onToggleFav={onToggleFavorite}
-            onWatch={() => selectedChannel && handleSelectAndWatch(selectedChannel)}
-            isCurrent={selectedChannel?.number === currentChannel?.number}
-          />
+          {/* Country Indicator / Quick selector */}
+          <button
+            className="lg-country-btn"
+            onClick={onOpenCountryModal}
+            title={`Active: ${activeCountryName} — Click to change`}
+          >
+            <span className="lg-country-flag">{activeCountryFlag || '🌐'}</span>
+            {!isCollapsed && (
+              <span className="lg-country-text">{activeCountryName || 'Global'}</span>
+            )}
+          </button>
+        </nav>
+
+        {/* Channel Column (Numbers + Logos) */}
+        <div className="lg-ch-col">
+          {list.length === 0 && (
+            <div className="lg-empty">
+              {tab === 'favorites' ? '⭐ No favourites saved' : '🔍 No channels found'}
+            </div>
+          )}
+
+          {visible.map((ch, i) => {
+            const isSel  = i === selWin;
+            const isFav  = favorites.includes(ch.number);
+            const isLive = ch.number === currentChannel?.number;
+
+            return (
+              <div
+                key={ch.number}
+                className={`lg-ch-row ${isSel ? 'lg-ch-sel' : ''}`}
+                style={{ height: isSel ? SEL_H : ROW_H }}
+                onClick={() => { setSelIdx(wStart + i); onSelectChannel(ch); }}
+                onDoubleClick={() => watchCh(ch)}
+              >
+                {isSel ? (
+                  /* Selected Row: Big Glass Card with number top-right & large logo */
+                  <>
+                    <div className="lg-sel-top">
+                      {isLive && <span className="lg-live-dot" title="Now Tuning Live" />}
+                      <span className="lg-sel-num">
+                        {String(ch.number).padStart(3, '0')}
+                      </span>
+                    </div>
+                    <div className="lg-sel-logo">
+                      {ch.logo ? (
+                        <img
+                          src={ch.logo}
+                          alt={ch.name}
+                          className="lg-sel-img"
+                          onError={e => { e.target.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <span className="lg-sel-fallback">
+                          {(ch.callsign || ch.name).slice(0, 6).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  /* Normal Row: Channel Number + Logo inline */
+                  <>
+                    <span className={`lg-ch-num ${isLive ? 'lg-ch-live' : ''}`}>
+                      {String(ch.number).padStart(3, '0')}
+                    </span>
+                    <div className="lg-logo-wrap">
+                      {ch.logo ? (
+                        <img
+                          src={ch.logo}
+                          alt={ch.name}
+                          className="lg-ch-logo"
+                          onError={e => { e.target.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <span className="lg-ch-fallback">
+                          {(ch.callsign || ch.name).slice(0, 5).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      className={`lg-star ${isFav ? 'lg-star-on' : ''}`}
+                      onClick={e => {
+                        e.stopPropagation();
+                        onToggleFavorite(ch.number);
+                        sounds.playClick();
+                      }}
+                      title={isFav ? 'Remove from favorites' : 'Add to favorites'}
+                    >
+                      ★
+                    </button>
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* Clock — top right, always visible */}
-      <div className="lg-clock">{formatClock(clock)}</div>
+      {/* ── Program Titles: Translucent text floating over video ── */}
+      <div className="lg-progs">
+        {visible.map((ch, i) => {
+          const isSel = i === selWin;
+          const h     = isSel ? SEL_H : ROW_H;
+          const epg   = getCurrentAndNextProgram(ch, new Date());
+
+          return (
+            <div
+              key={ch.number}
+              className={`lg-prog-row ${isSel ? 'lg-prog-sel' : ''}`}
+              style={{ height: h, flexShrink: 0 }}
+              onClick={() => { setSelIdx(wStart + i); onSelectChannel(ch); }}
+              onDoubleClick={() => watchCh(ch)}
+            >
+              {isSel ? (
+                /* Selected: Title + "On Now" in vibrant green + Next title + "On Next" */
+                <>
+                  <p className="lg-prog-title">
+                    {epg?.current?.title || ch.name}
+                  </p>
+                  <p className="lg-on-now">On Now</p>
+                  {epg?.next && (
+                    <p className="lg-prog-next">{epg.next.title}</p>
+                  )}
+                  {epg?.next && (
+                    <p className="lg-on-next">On Next</p>
+                  )}
+                </>
+              ) : (
+                /* Normal: Title with soft glass drop-shadow */
+                <p className="lg-prog-dim">
+                  {epg?.current?.title || ch.name}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Glass Clock (Top-Right) */}
+      <div className="lg-clock-glass">
+        <span>{fmtClock(clock)}</span>
+      </div>
+
+      {/* Bottom Glass Navigation Hints */}
+      <div className="lg-kbd-glass">
+        <span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
+        <span><kbd>Enter</kbd> Watch</span>
+        <span><kbd>F</kbd> Favorite</span>
+        <span><kbd>[</kbd> Toggle Sidebar</span>
+        <span><kbd>Esc</kbd> Close</span>
+      </div>
     </div>
   );
 }
