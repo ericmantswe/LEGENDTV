@@ -21,7 +21,7 @@ const SEL_H   = 112;  // px — selected channel block (2× row height)
 const NAV_ITEMS = [
   { id: 'settings',  label: 'SETTINGS',  icon: Settings },
   { id: 'search',    label: 'SEARCH',    icon: Search   },
-  { id: 'live',      label: 'LIVE TV',   icon: Tv       },
+  { id: 'live',      label: 'ALL CHANNELS', icon: Tv   },
   { id: 'favorites', label: 'FAVORITES', icon: Star     },
   { id: 'countries', label: 'COUNTRIES', icon: Globe    },
   { id: 'iptv',      label: 'IPTV-ORG',  icon: Sliders  },
