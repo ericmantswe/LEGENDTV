@@ -8,15 +8,15 @@ import {
   Globe,
   Sliders,
   Settings,
-  PanelLeftClose,
-  PanelLeftOpen,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import './LegendGuide.css';
 
-/* ── Constants ──────────────────────────────────────────── */
-const VISIBLE = 7;    // rows visible at once (3 above + selected + 3 below)
-const ROW_H   = 56;   // px — normal channel row height
-const SEL_H   = 112;  // px — selected channel row height (2× normal)
+/* ── Constants matching reference photo ─────────────────── */
+const VISIBLE = 7;    // 3 above + selected + 3 below
+const ROW_H   = 56;   // px — normal channel row
+const SEL_H   = 112;  // px — selected channel block (2× row height)
 
 const NAV_ITEMS = [
   { id: 'settings',  label: 'SETTINGS',  icon: Settings },
@@ -43,8 +43,6 @@ export default function LegendGuide({
   onShowRemote,
   activeCountryFlag,
   activeCountryName,
-  isFullscreen,
-  onToggleFullscreen,
 }) {
   const [tab, setTab] = useState('live');
   const [query, setQuery] = useState('');
@@ -80,7 +78,7 @@ export default function LegendGuide({
 
   /* Auto-focus search */
   useEffect(() => {
-    if (tab === 'search') setTimeout(() => searchRef.current?.focus(), 60);
+    if (tab === 'search') setTimeout(() => searchRef.current?.focus(), 50);
   }, [tab]);
 
   /* Filtered channel list */
@@ -178,15 +176,15 @@ export default function LegendGuide({
   return (
     <div className="lg-wrap">
 
-      {/* Floating Glass Search Bar (active when tab === 'search') */}
+      {/* Search Input when SEARCH tab is selected */}
       {tab === 'search' && (
-        <div className="lg-glass-search">
-          <Search size={18} className="lg-search-icon" />
+        <div className="lg-search-bar">
+          <Search size={16} className="lg-search-icon" />
           <input
             ref={searchRef}
             className="lg-search-input"
             type="text"
-            placeholder="Search channels, numbers, categories…"
+            placeholder="Search channels, numbers…"
             value={query}
             onChange={e => { setQuery(e.target.value); setSelIdx(0); }}
           />
@@ -196,20 +194,19 @@ export default function LegendGuide({
         </div>
       )}
 
-      {/* ── Frosted Glass Left Container ─────────────────── */}
-      <div className={`lg-glass-panel ${isCollapsed ? 'lg-collapsed' : ''}`}>
+      {/* ── Left Frosted Glass Section ──────────────────────── */}
+      <div className={`lg-glass-left ${isCollapsed ? 'lg-collapsed' : ''}`}>
 
         {/* Collapsible Sidebar */}
-        <nav className={`lg-sidebar ${isCollapsed ? 'sidebar-min' : ''}`}>
-          {/* Collapse / Expand Toggle Button */}
-          <div className="lg-sidebar-toggle-wrap">
+        <nav className="lg-sidebar">
+          {/* Header with Sidebar Collapse Toggle */}
+          <div className="lg-sidebar-top">
             <button
-              className="lg-sidebar-toggle"
+              className="lg-collapse-btn"
               onClick={toggleSidebar}
               title={isCollapsed ? 'Expand sidebar ([)' : 'Collapse sidebar ([)'}
-              aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
-              {isCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+              {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
             </button>
           </div>
 
@@ -221,35 +218,35 @@ export default function LegendGuide({
               return (
                 <button
                   key={item.id}
-                  className={`lg-nav-btn ${isActive ? 'lg-nav-on' : ''}`}
+                  className={`lg-nav-item ${isActive ? 'lg-nav-active' : ''}`}
                   onClick={() => changeTab(item.id)}
                   title={isCollapsed ? item.label : undefined}
                 >
-                  <Icon size={18} className="lg-nav-icon" />
-                  {!isCollapsed && <span className="lg-nav-label">{item.label}</span>}
+                  <Icon size={16} className="lg-nav-icon" />
+                  {!isCollapsed && <span className="lg-nav-text">{item.label}</span>}
                 </button>
               );
             })}
           </div>
 
-          {/* Country Indicator / Quick selector */}
+          {/* Country Lineup Indicator */}
           <button
             className="lg-country-btn"
             onClick={onOpenCountryModal}
-            title={`Active: ${activeCountryName} — Click to change`}
+            title={`Country: ${activeCountryName} (Click to change)`}
           >
             <span className="lg-country-flag">{activeCountryFlag || '🌐'}</span>
             {!isCollapsed && (
-              <span className="lg-country-text">{activeCountryName || 'Global'}</span>
+              <span className="lg-country-name">{activeCountryName || 'Global'}</span>
             )}
           </button>
         </nav>
 
-        {/* Channel Column (Numbers + Logos) */}
-        <div className="lg-ch-col">
+        {/* Channel List Column */}
+        <div className="lg-ch-column">
           {list.length === 0 && (
-            <div className="lg-empty">
-              {tab === 'favorites' ? '⭐ No favourites saved' : '🔍 No channels found'}
+            <div className="lg-empty-list">
+              {tab === 'favorites' ? 'No favorites saved' : 'No channels found'}
             </div>
           )}
 
@@ -261,63 +258,63 @@ export default function LegendGuide({
             return (
               <div
                 key={ch.number}
-                className={`lg-ch-row ${isSel ? 'lg-ch-sel' : ''}`}
+                className={`lg-ch-row ${isSel ? 'lg-ch-selected' : ''}`}
                 style={{ height: isSel ? SEL_H : ROW_H }}
                 onClick={() => { setSelIdx(wStart + i); onSelectChannel(ch); }}
                 onDoubleClick={() => watchCh(ch)}
               >
                 {isSel ? (
-                  /* Selected Row: Big Glass Card with number top-right & large logo */
+                  /* ── Selected Channel Block: Solid Blue Square ── */
                   <>
-                    <div className="lg-sel-top">
-                      {isLive && <span className="lg-live-dot" title="Now Tuning Live" />}
-                      <span className="lg-sel-num">
+                    <div className="lg-sel-header">
+                      {isLive && <span className="lg-live-indicator" title="Live stream" />}
+                      <span className="lg-sel-number">
                         {String(ch.number).padStart(3, '0')}
                       </span>
                     </div>
-                    <div className="lg-sel-logo">
+                    <div className="lg-sel-logo-container">
                       {ch.logo ? (
                         <img
                           src={ch.logo}
                           alt={ch.name}
-                          className="lg-sel-img"
+                          className="lg-sel-logo-img"
                           onError={e => { e.target.style.display = 'none'; }}
                         />
                       ) : (
-                        <span className="lg-sel-fallback">
+                        <span className="lg-sel-callsign">
                           {(ch.callsign || ch.name).slice(0, 6).toUpperCase()}
                         </span>
                       )}
                     </div>
                   </>
                 ) : (
-                  /* Normal Row: Channel Number + Logo inline */
+                  /* ── Normal Row: Number + Logo inline ── */
                   <>
-                    <span className={`lg-ch-num ${isLive ? 'lg-ch-live' : ''}`}>
+                    <span className={`lg-row-number ${isLive ? 'lg-row-live' : ''}`}>
                       {String(ch.number).padStart(3, '0')}
                     </span>
-                    <div className="lg-logo-wrap">
+                    <div className="lg-row-logo-wrap">
                       {ch.logo ? (
                         <img
                           src={ch.logo}
                           alt={ch.name}
-                          className="lg-ch-logo"
+                          className="lg-row-logo-img"
                           onError={e => { e.target.style.display = 'none'; }}
                         />
                       ) : (
-                        <span className="lg-ch-fallback">
+                        <span className="lg-row-fallback">
                           {(ch.callsign || ch.name).slice(0, 5).toUpperCase()}
                         </span>
                       )}
                     </div>
                     <button
-                      className={`lg-star ${isFav ? 'lg-star-on' : ''}`}
+                      className={`lg-fav-star ${isFav ? 'lg-fav-active' : ''}`}
                       onClick={e => {
                         e.stopPropagation();
                         onToggleFavorite(ch.number);
                         sounds.playClick();
                       }}
-                      title={isFav ? 'Remove from favorites' : 'Add to favorites'}
+                      title={isFav ? 'Remove favorite' : 'Add favorite'}
                     >
                       ★
                     </button>
@@ -329,8 +326,8 @@ export default function LegendGuide({
         </div>
       </div>
 
-      {/* ── Program Titles: Translucent text floating over video ── */}
-      <div className="lg-progs">
+      {/* ── Program Listings: Floating directly over video ── */}
+      <div className="lg-program-column">
         {visible.map((ch, i) => {
           const isSel = i === selWin;
           const h     = isSel ? SEL_H : ROW_H;
@@ -339,28 +336,28 @@ export default function LegendGuide({
           return (
             <div
               key={ch.number}
-              className={`lg-prog-row ${isSel ? 'lg-prog-sel' : ''}`}
+              className={`lg-prog-row ${isSel ? 'lg-prog-selected' : ''}`}
               style={{ height: h, flexShrink: 0 }}
               onClick={() => { setSelIdx(wStart + i); onSelectChannel(ch); }}
               onDoubleClick={() => watchCh(ch)}
             >
               {isSel ? (
-                /* Selected: Title + "On Now" in vibrant green + Next title + "On Next" */
+                /* Selected: Title + On Now (green) + Next Title + On Next */
                 <>
-                  <p className="lg-prog-title">
+                  <p className="lg-title-current">
                     {epg?.current?.title || ch.name}
                   </p>
-                  <p className="lg-on-now">On Now</p>
+                  <p className="lg-label-on-now">On Now</p>
                   {epg?.next && (
-                    <p className="lg-prog-next">{epg.next.title}</p>
+                    <p className="lg-title-next">{epg.next.title}</p>
                   )}
                   {epg?.next && (
-                    <p className="lg-on-next">On Next</p>
+                    <p className="lg-label-on-next">On Next</p>
                   )}
                 </>
               ) : (
-                /* Normal: Title with soft glass drop-shadow */
-                <p className="lg-prog-dim">
+                /* Inactive: Just program title floating over video */
+                <p className="lg-title-dim">
                   {epg?.current?.title || ch.name}
                 </p>
               )}
@@ -369,18 +366,16 @@ export default function LegendGuide({
         })}
       </div>
 
-      {/* Glass Clock (Top-Right) */}
-      <div className="lg-clock-glass">
-        <span>{fmtClock(clock)}</span>
-      </div>
+      {/* Clock — Top right, clean floating text matching reference photo */}
+      <div className="lg-clock">{fmtClock(clock)}</div>
 
-      {/* Bottom Glass Navigation Hints */}
-      <div className="lg-kbd-glass">
-        <span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
+      {/* Keyboard hints — Bottom clean text */}
+      <div className="lg-hints">
+        <span><kbd>↑↓</kbd> Navigate</span>
         <span><kbd>Enter</kbd> Watch</span>
         <span><kbd>F</kbd> Favorite</span>
-        <span><kbd>[</kbd> Toggle Sidebar</span>
-        <span><kbd>Esc</kbd> Close</span>
+        <span><kbd>[</kbd> Sidebar</span>
+        <span><kbd>G</kbd> Close</span>
       </div>
     </div>
   );
