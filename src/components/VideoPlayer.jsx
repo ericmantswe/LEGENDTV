@@ -102,14 +102,19 @@ export default function VideoPlayer({ channel, volume, isMuted }) {
   }, [volume, isMuted]);
 
   return (
-    <div className="video-wrapper">
+    <div className="video-wrapper" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
       <video
         ref={videoRef}
         className="main-video"
         playsInline
         autoPlay
         muted={isMuted}
-        style={{ opacity: status === 'playing' ? 1 : 0 }}
+        style={{
+          position: 'absolute', inset: 0,
+          width: '100%', height: '100%',
+          objectFit: 'contain', background: '#000',
+          opacity: status === 'playing' ? 1 : 0,
+        }}
       />
 
       {status === 'loading' && (
