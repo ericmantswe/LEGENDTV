@@ -41,3 +41,4 @@ export async function translateToEnglish(text) {
     return trimmed;
   }
 }
+
