@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
+import { translateToEnglish } from '../utils/translator.js';
 
 /** Route every HLS.js fetch through our CORS proxy, optionally with referrer + UA */
 function makeProxyFetchSetup(httpReferrer, userAgent) {
@@ -31,14 +32,19 @@ export default function VideoPlayer({ channel, volume, isMuted, captionsEnabled 
   const [activeCaption, setActiveCaption] = useState('');
   const captionTimerRef = useRef(null);
 
-  /* Helper to set caption with auto-clear after 5 seconds of silence */
-  const pushCaption = (text) => {
+  /* Helper to set caption with auto-translation to English and auto-clear */
+  const pushCaption = async (text) => {
     if (!text || !text.trim()) return;
-    setActiveCaption(text.trim());
+    const clean = text.trim();
+
+    // Auto-translate to English in real time
+    const englishText = await translateToEnglish(clean);
+    setActiveCaption(englishText || clean);
+
     if (captionTimerRef.current) clearTimeout(captionTimerRef.current);
     captionTimerRef.current = setTimeout(() => {
       setActiveCaption('');
-    }, 5000);
+    }, 6000);
   };
 
   /* ── HLS / Video Stream Lifecycle ───────────────────────── */
@@ -62,7 +68,7 @@ export default function VideoPlayer({ channel, volume, isMuted, captionsEnabled 
         levelLoadingMaxRetry: 3,
         fragLoadingMaxRetry: 4,
         fetchSetup,
-        renderTextTracksNatively: true, // Native browser rendering ensures subtitles display directly on video
+        renderTextTracksNatively: false, // Prevents awkward browser CEA-608 top-left positioning on faces
         enableCEA608Captions: true,
       });
       hlsRef.current = hls;
@@ -179,7 +185,7 @@ export default function VideoPlayer({ channel, volume, isMuted, captionsEnabled 
 
     const attachTrack = (tr) => {
       if (!tr) return;
-      tr.mode = captionsEnabled ? 'showing' : 'disabled';
+      tr.mode = captionsEnabled ? 'hidden' : 'disabled'; // hidden allows cue events to fire without awkward top-left native paint
       tr.removeEventListener('cuechange', handleCueChange);
       tr.addEventListener('cuechange', handleCueChange);
     };
