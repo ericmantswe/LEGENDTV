@@ -1,25 +1,22 @@
 /* ============================================================
    LEGEND ER TV — Guide Component Styles
-   Charcoal Grey Dark Mode — Transparent Borders, Color Differentiated
-   No Glows, No Shadows
+   Charcoal Grey Dark Mode — Truly Shows ALL Channels (Scrollable)
+   Transparent Borders, No Shadows, No Glows
    ============================================================ */
 
 :root {
-  /* Charcoal Grey Palette */
   --charcoal-sidebar:   rgba(22, 25, 29, 0.78);
   --charcoal-channel:   rgba(32, 36, 42, 0.68);
   --charcoal-hover:     rgba(45, 50, 58, 0.75);
   --charcoal-modal:     rgba(24, 27, 32, 0.95);
   --charcoal-input:     rgba(40, 45, 52, 0.85);
 
-  /* Solid Vibrant Blue for Active / Selected Elements */
   --blue-solid:         #1066c0;
   --blue-hover:         #1677dd;
 
-  /* Typography Colors */
   --text-white:         #ffffff;
-  --text-muted:         rgba(255, 255, 255, 0.52);
-  --text-dim:           rgba(255, 255, 255, 0.35);
+  --text-muted:         rgba(255, 255, 255, 0.55);
+  --text-dim:           rgba(255, 255, 255, 0.38);
   --text-green:         #46b860;
   --text-green-dim:     #389b50;
   --text-gold:          #f59e0b;
@@ -51,7 +48,7 @@
   background: var(--charcoal-modal);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid transparent;
+  border: none;
   border-radius: 4px;
 }
 
@@ -93,7 +90,7 @@
   color: #fff;
 }
 
-/* ── Left Frosted Glass Section (Charcoal Grey) ────────────── */
+/* ── Left Charcoal Grey Frosted Glass Section ────────────── */
 .lg-glass-left {
   display: flex;
   height: 100%;
@@ -104,7 +101,7 @@
   transition: width 0.22s ease;
 }
 
-/* ── Collapsible Sidebar (Deeper Charcoal Grey) ────────────── */
+/* ── Collapsible Sidebar (Charcoal Grey) ─────────────────── */
 .lg-sidebar {
   width: 156px;
   background: var(--charcoal-sidebar);
@@ -243,15 +240,49 @@
   white-space: nowrap;
 }
 
-/* ── Channel Column (Slightly Lighter Charcoal Grey) ───────── */
-.lg-ch-column {
-  width: 196px;
+/* ── Channel Column Wrap: Truly Scrollable through ALL channels ── */
+.lg-ch-column-wrap {
+  width: 204px;
+  height: 100%;
   background: var(--charcoal-channel);
   display: flex;
   flex-direction: column;
-  justify-content: center;
   overflow: hidden;
   border: none;
+}
+
+.lg-ch-header-info {
+  padding: 14px 16px 8px;
+  border: none;
+  flex-shrink: 0;
+}
+
+.lg-ch-count-text {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+/* Fully scrollable container */
+.lg-ch-column-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  scroll-behavior: smooth;
+  border: none;
+}
+
+.lg-ch-column-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.lg-ch-column-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
 }
 
 .lg-empty-list {
@@ -283,7 +314,7 @@
   color: #fff;
 }
 
-/* Selected Channel Block: Pure Solid Blue Square */
+/* Selected Channel Block: Solid Blue Square Block */
 .lg-ch-selected {
   background: var(--blue-solid) !important;
   flex-direction: column;
@@ -400,85 +431,142 @@
   color: var(--text-gold);
 }
 
-/* ── Program Listings: Floating cleanly over video ─────────── */
+/* ── Program Details Column: Floating directly over video ── */
 .lg-program-column {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 0 24px 0 28px;
+  padding: 0 40px 0 44px;
   flex: 1;
   min-width: 0;
-  overflow: hidden;
+  overflow-y: auto;
   border: none;
 }
 
-.lg-prog-row {
+.lg-prog-panel {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 3px;
-  overflow: hidden;
-  cursor: pointer;
-  border: none;
+  gap: 22px;
+  max-width: 720px;
 }
 
-.lg-prog-selected {
-  justify-content: center;
-  gap: 3px;
+.lg-prog-main-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .lg-title-current {
-  font-size: 21px;
-  font-weight: 400;
+  font-size: 32px;
+  font-weight: 600;
   color: #ffffff;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.2;
+  line-height: 1.15;
   margin: 0;
-}
-
-.lg-title-dim {
-  font-size: 18px;
-  font-weight: 400;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin: 0;
-  transition: color 0.1s;
-}
-
-.lg-prog-row:hover .lg-title-dim {
-  color: #ffffff;
-}
-
-.lg-title-next {
-  font-size: 18px;
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.75);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin: 0;
+  letter-spacing: -0.3px;
 }
 
 .lg-label-on-now {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 13.5px;
+  font-weight: 700;
   color: var(--text-green);
-  letter-spacing: 0.2px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
   margin: 0;
   line-height: 1;
 }
 
-.lg-label-on-next {
-  font-size: 13px;
+.lg-prog-synopsis {
+  font-size: 14.5px;
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.5;
+  margin: 6px 0 0;
+  max-width: 650px;
+}
+
+.lg-prog-time {
+  font-size: 12.5px;
+  color: var(--text-dim);
   font-weight: 600;
+  margin-top: 4px;
+}
+
+/* Next up block */
+.lg-prog-next-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.lg-title-next {
+  font-size: 20px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.82);
+  margin: 0;
+}
+
+.lg-label-on-next {
+  font-size: 12.5px;
+  font-weight: 700;
   color: var(--text-green-dim);
-  letter-spacing: 0.2px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
   margin: 0;
   line-height: 1;
+}
+
+/* Action buttons */
+.lg-prog-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.lg-action-watch {
+  background: var(--blue-solid);
+  border: none;
+  color: #fff;
+  padding: 10px 24px;
+  border-radius: 4px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s;
+  font-family: inherit;
+}
+
+.lg-action-watch:hover {
+  background: var(--blue-hover);
+}
+
+.lg-action-fav {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: #e2e8f0;
+  padding: 10px 18px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s;
+  font-family: inherit;
+}
+
+.lg-action-fav:hover {
+  background: rgba(245, 158, 11, 0.25);
+  color: var(--text-gold);
+}
+
+.lg-action-fav-active {
+  background: rgba(245, 158, 11, 0.25);
+  color: var(--text-gold);
+}
+
+.lg-prog-empty {
+  color: var(--text-dim);
+  font-size: 16px;
 }
 
 /* ── Clock — Top right, clean plain text ───────────────────── */
@@ -523,12 +611,12 @@
 }
 
 /* ── Responsive ── */
-@media (max-width: 800px) {
+@media (max-width: 900px) {
   .lg-program-column {
     display: none;
   }
-  .lg-ch-column {
-    width: 220px;
+  .lg-ch-column-wrap {
+    width: 240px;
   }
 }
 

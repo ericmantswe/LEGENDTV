@@ -134,6 +134,18 @@ export async function loadCountries() {
   return fetchJSON('countries.json');
 }
 
+/**
+ * Load global index playlist (11,000+ channels worldwide)
+ */
+export async function loadAllGlobalChannels(limit = 1500) {
+  const url = 'https://iptv-org.github.io/iptv/index.m3u';
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to load global M3U (${res.status})`);
+  const text = await res.text();
+  const channels = parseM3U(text, 1);
+  return channels.slice(0, limit);
+}
+
 export async function loadCategories() {
   return fetchJSON('categories.json');
 }

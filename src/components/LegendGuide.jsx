@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { getCurrentAndNextProgram } from '../utils/epgGenerator.js';
+import { getCurrentAndNextProgram, formatTimeRange } from '../utils/epgGenerator.js';
 import { sounds } from '../utils/audioFX.js';
 import {
   Tv,
@@ -13,18 +13,16 @@ import {
 } from 'lucide-react';
 import './LegendGuide.css';
 
-/* ── Constants matching reference photo ─────────────────── */
-const VISIBLE = 7;    // 3 above + selected + 3 below
-const ROW_H   = 56;   // px — normal channel row
-const SEL_H   = 112;  // px — selected channel block (2× row height)
+const ROW_H = 56;
+const SEL_H = 112;
 
 const NAV_ITEMS = [
-  { id: 'settings',  label: 'SETTINGS',  icon: Settings },
-  { id: 'search',    label: 'SEARCH',    icon: Search   },
-  { id: 'live',      label: 'ALL CHANNELS', icon: Tv   },
-  { id: 'favorites', label: 'FAVORITES', icon: Star     },
-  { id: 'countries', label: 'COUNTRIES', icon: Globe    },
-  { id: 'iptv',      label: 'IPTV-ORG',  icon: Sliders  },
+  { id: 'settings',  label: 'SETTINGS',     icon: Settings },
+  { id: 'search',    label: 'SEARCH',       icon: Search   },
+  { id: 'live',      label: 'ALL CHANNELS', icon: Tv       },
+  { id: 'favorites', label: 'FAVORITES',    icon: Star     },
+  { id: 'countries', label: 'COUNTRIES',    icon: Globe    },
+  { id: 'iptv',      label: 'IPTV-ORG',     icon: Sliders  },
 ];
 
 function fmtClock(d) {
@@ -53,12 +51,16 @@ export default function LegendGuide({
       return false;
     }
   });
+
   const [selIdx, setSelIdx] = useState(() => {
     const i = channels.findIndex(c => c.number === currentChannel?.number);
     return i !== -1 ? i : 0;
   });
+
   const [clock, setClock] = useState(new Date());
   const searchRef = useRef(null);
+  const selectedItemRef = useRef(null);
+  const scrollContainerRef = useRef(null);
 
   /* Clock tick */
   useEffect(() => {
@@ -81,7 +83,7 @@ export default function LegendGuide({
     if (tab === 'search') setTimeout(() => searchRef.current?.focus(), 50);
   }, [tab]);
 
-  /* Filtered channel list */
+  /* Filtered channel list — ALL CHANNELS supported */
   const list = useMemo(() => {
     let chs = channels;
     if (tab === 'favorites') chs = channels.filter(c => favorites.includes(c.number));
@@ -96,14 +98,17 @@ export default function LegendGuide({
     return chs;
   }, [channels, tab, query, favorites]);
 
-  /* Windowed view centered on selected */
-  const safe    = Math.min(selIdx, Math.max(0, list.length - 1));
-  const half    = Math.floor(VISIBLE / 2); // 3
-  const wStart  = Math.max(0, Math.min(safe - half, Math.max(0, list.length - VISIBLE)));
-  const visible = list.slice(wStart, wStart + VISIBLE);
-  const selWin  = safe - wStart; // index in visible[]
+  const safeIdx = Math.min(selIdx, Math.max(0, list.length - 1));
+  const selectedChannel = list[safeIdx] || currentChannel || channels[0];
 
-  /* Tab / action handler */
+  /* Scroll selected item into view whenever selIdx changes */
+  useEffect(() => {
+    if (selectedItemRef.current) {
+      selectedItemRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [safeIdx]);
+
+  /* Tab change */
   const changeTab = useCallback((id) => {
     sounds.playClick();
     if (id === 'countries') { onOpenCountryModal(); return; }
@@ -139,16 +144,28 @@ export default function LegendGuide({
           sounds.playClick();
           setSelIdx(p => Math.min(list.length - 1, p + 1));
           break;
+        case 'PageUp':
+          if (inp) return;
+          e.preventDefault();
+          sounds.playClick();
+          setSelIdx(p => Math.max(0, p - 10));
+          break;
+        case 'PageDown':
+          if (inp) return;
+          e.preventDefault();
+          sounds.playClick();
+          setSelIdx(p => Math.min(list.length - 1, p + 10));
+          break;
         case 'Enter':
           if (inp) return;
           e.preventDefault();
-          if (list[safe]) watchCh(list[safe]);
+          if (selectedChannel) watchCh(selectedChannel);
           break;
         case 'f':
         case 'F':
           if (inp) return;
-          if (list[safe]) {
-            onToggleFavorite(list[safe].number);
+          if (selectedChannel) {
+            onToggleFavorite(selectedChannel.number);
             sounds.playClick();
           }
           break;
@@ -171,7 +188,16 @@ export default function LegendGuide({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [list, safe, watchCh, onCloseGuide, onToggleFavorite, toggleSidebar]);
+  }, [list, safeIdx, selectedChannel, watchCh, onCloseGuide, onToggleFavorite, toggleSidebar]);
+
+  /* EPG details for the selected channel */
+  const epg = useMemo(() => {
+    if (!selectedChannel) return null;
+    return getCurrentAndNextProgram(selectedChannel, new Date());
+  }, [selectedChannel]);
+
+  const isCurrentChannelLive = selectedChannel?.number === currentChannel?.number;
+  const isSelectedFav = selectedChannel ? favorites.includes(selectedChannel.number) : false;
 
   return (
     <div className="lg-wrap">
@@ -184,7 +210,7 @@ export default function LegendGuide({
             ref={searchRef}
             className="lg-search-input"
             type="text"
-            placeholder="Search channels, numbers…"
+            placeholder={`Search across all ${channels.length} channels…`}
             value={query}
             onChange={e => { setQuery(e.target.value); setSelIdx(0); }}
           />
@@ -194,7 +220,7 @@ export default function LegendGuide({
         </div>
       )}
 
-      {/* ── Left Frosted Glass Section ──────────────────────── */}
+      {/* ── Left Charcoal Grey Frosted Glass Section ────────── */}
       <div className={`lg-glass-left ${isCollapsed ? 'lg-collapsed' : ''}`}>
 
         {/* Collapsible Sidebar */}
@@ -233,7 +259,7 @@ export default function LegendGuide({
           <button
             className="lg-country-btn"
             onClick={onOpenCountryModal}
-            title={`Country: ${activeCountryName} (Click to change)`}
+            title={`Active: ${activeCountryName} (${channels.length} channels) — Click to switch`}
           >
             <span className="lg-country-flag">{activeCountryFlag || '🌐'}</span>
             {!isCollapsed && (
@@ -242,136 +268,166 @@ export default function LegendGuide({
           </button>
         </nav>
 
-        {/* Channel List Column */}
-        <div className="lg-ch-column">
-          {list.length === 0 && (
-            <div className="lg-empty-list">
-              {tab === 'favorites' ? 'No favorites saved' : 'No channels found'}
-            </div>
-          )}
+        {/* ── Channel Column: Truly shows ALL channels (scrollable) ── */}
+        <div className="lg-ch-column-wrap">
+          {/* Header indicator showing channel count */}
+          <div className="lg-ch-header-info">
+            <span className="lg-ch-count-text">
+              {tab === 'favorites' ? 'FAVORITES' : 'ALL CHANNELS'} ({list.length})
+            </span>
+          </div>
 
-          {visible.map((ch, i) => {
-            const isSel  = i === selWin;
-            const isFav  = favorites.includes(ch.number);
-            const isLive = ch.number === currentChannel?.number;
+          <div className="lg-ch-column-scroll" ref={scrollContainerRef}>
+            {list.length === 0 && (
+              <div className="lg-empty-list">
+                {tab === 'favorites' ? 'No favorites saved yet' : 'No channels found'}
+              </div>
+            )}
 
-            return (
-              <div
-                key={ch.number}
-                className={`lg-ch-row ${isSel ? 'lg-ch-selected' : ''}`}
-                style={{ height: isSel ? SEL_H : ROW_H }}
-                onClick={() => { setSelIdx(wStart + i); onSelectChannel(ch); }}
-                onDoubleClick={() => watchCh(ch)}
-              >
-                {isSel ? (
-                  /* ── Selected Channel Block: Solid Blue Square ── */
-                  <>
-                    <div className="lg-sel-header">
-                      {isLive && <span className="lg-live-indicator" title="Live stream" />}
-                      <span className="lg-sel-number">
+            {list.map((ch, i) => {
+              const isSel  = i === safeIdx;
+              const isFav  = favorites.includes(ch.number);
+              const isLive = ch.number === currentChannel?.number;
+
+              return (
+                <div
+                  key={ch.number}
+                  ref={isSel ? selectedItemRef : null}
+                  className={`lg-ch-row ${isSel ? 'lg-ch-selected' : ''}`}
+                  style={{ height: isSel ? SEL_H : ROW_H }}
+                  onClick={() => { setSelIdx(i); onSelectChannel(ch); }}
+                  onDoubleClick={() => watchCh(ch)}
+                >
+                  {isSel ? (
+                    /* ── Selected Channel Block: Solid Blue Square Block ── */
+                    <>
+                      <div className="lg-sel-header">
+                        {isLive && <span className="lg-live-indicator" title="Currently Tuned" />}
+                        <span className="lg-sel-number">
+                          {String(ch.number).padStart(3, '0')}
+                        </span>
+                      </div>
+                      <div className="lg-sel-logo-container">
+                        {ch.logo ? (
+                          <img
+                            src={ch.logo}
+                            alt={ch.name}
+                            className="lg-sel-logo-img"
+                            onError={e => { e.target.style.display = 'none'; }}
+                          />
+                        ) : (
+                          <span className="lg-sel-callsign">
+                            {(ch.callsign || ch.name).slice(0, 6).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    /* ── Normal Row: Channel Number + Logo ── */
+                    <>
+                      <span className={`lg-row-number ${isLive ? 'lg-row-live' : ''}`}>
                         {String(ch.number).padStart(3, '0')}
                       </span>
-                    </div>
-                    <div className="lg-sel-logo-container">
-                      {ch.logo ? (
-                        <img
-                          src={ch.logo}
-                          alt={ch.name}
-                          className="lg-sel-logo-img"
-                          onError={e => { e.target.style.display = 'none'; }}
-                        />
-                      ) : (
-                        <span className="lg-sel-callsign">
-                          {(ch.callsign || ch.name).slice(0, 6).toUpperCase()}
-                        </span>
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  /* ── Normal Row: Number + Logo inline ── */
-                  <>
-                    <span className={`lg-row-number ${isLive ? 'lg-row-live' : ''}`}>
-                      {String(ch.number).padStart(3, '0')}
-                    </span>
-                    <div className="lg-row-logo-wrap">
-                      {ch.logo ? (
-                        <img
-                          src={ch.logo}
-                          alt={ch.name}
-                          className="lg-row-logo-img"
-                          onError={e => { e.target.style.display = 'none'; }}
-                        />
-                      ) : (
-                        <span className="lg-row-fallback">
-                          {(ch.callsign || ch.name).slice(0, 5).toUpperCase()}
-                        </span>
-                      )}
-                    </div>
-                    <button
-                      className={`lg-fav-star ${isFav ? 'lg-fav-active' : ''}`}
-                      onClick={e => {
-                        e.stopPropagation();
-                        onToggleFavorite(ch.number);
-                        sounds.playClick();
-                      }}
-                      title={isFav ? 'Remove favorite' : 'Add favorite'}
-                    >
-                      ★
-                    </button>
-                  </>
-                )}
-              </div>
-            );
-          })}
+                      <div className="lg-row-logo-wrap">
+                        {ch.logo ? (
+                          <img
+                            src={ch.logo}
+                            alt={ch.name}
+                            className="lg-row-logo-img"
+                            onError={e => { e.target.style.display = 'none'; }}
+                          />
+                        ) : (
+                          <span className="lg-row-fallback">
+                            {(ch.callsign || ch.name).slice(0, 5).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        className={`lg-fav-star ${isFav ? 'lg-fav-active' : ''}`}
+                        onClick={e => {
+                          e.stopPropagation();
+                          onToggleFavorite(ch.number);
+                          sounds.playClick();
+                        }}
+                        title={isFav ? 'Remove favorite' : 'Add favorite'}
+                      >
+                        ★
+                      </button>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {/* ── Program Listings: Floating directly over video ── */}
+      {/* ── Program Listings Column: Floating directly over video ── */}
       <div className="lg-program-column">
-        {visible.map((ch, i) => {
-          const isSel = i === selWin;
-          const h     = isSel ? SEL_H : ROW_H;
-          const epg   = getCurrentAndNextProgram(ch, new Date());
+        {selectedChannel ? (
+          <div className="lg-prog-panel">
+            {/* Main Program Title & Status */}
+            <div className="lg-prog-main-block">
+              <h1 className="lg-title-current">
+                {epg?.current?.title || selectedChannel.name}
+              </h1>
+              <p className="lg-label-on-now">On Now</p>
 
-          return (
-            <div
-              key={ch.number}
-              className={`lg-prog-row ${isSel ? 'lg-prog-selected' : ''}`}
-              style={{ height: h, flexShrink: 0 }}
-              onClick={() => { setSelIdx(wStart + i); onSelectChannel(ch); }}
-              onDoubleClick={() => watchCh(ch)}
-            >
-              {isSel ? (
-                /* Selected: Title + On Now (green) + Next Title + On Next */
-                <>
-                  <p className="lg-title-current">
-                    {epg?.current?.title || ch.name}
-                  </p>
-                  <p className="lg-label-on-now">On Now</p>
-                  {epg?.next && (
-                    <p className="lg-title-next">{epg.next.title}</p>
-                  )}
-                  {epg?.next && (
-                    <p className="lg-label-on-next">On Next</p>
-                  )}
-                </>
-              ) : (
-                /* Inactive: Just program title floating over video */
-                <p className="lg-title-dim">
-                  {epg?.current?.title || ch.name}
+              {epg?.current?.description && (
+                <p className="lg-prog-synopsis">{epg.current.description}</p>
+              )}
+
+              {epg?.current && (
+                <p className="lg-prog-time">
+                  {formatTimeRange(epg.current.startTime, epg.current.endTime)}
                 </p>
               )}
             </div>
-          );
-        })}
+
+            {/* Next Program Up */}
+            {epg?.next && (
+              <div className="lg-prog-next-block">
+                <p className="lg-title-next">{epg.next.title}</p>
+                <p className="lg-label-on-next">On Next</p>
+                <p className="lg-prog-time">
+                  {formatTimeRange(epg.next.startTime, epg.next.endTime)}
+                </p>
+              </div>
+            )}
+
+            {/* Quick Actions for Selected Channel */}
+            <div className="lg-prog-actions">
+              <button
+                className="lg-action-watch"
+                onClick={() => watchCh(selectedChannel)}
+              >
+                ▶ {isCurrentChannelLive ? 'Watch Live' : 'Tune Channel'}
+              </button>
+              <button
+                className={`lg-action-fav ${isSelectedFav ? 'lg-action-fav-active' : ''}`}
+                onClick={() => {
+                  onToggleFavorite(selectedChannel.number);
+                  sounds.playClick();
+                }}
+              >
+                {isSelectedFav ? '★ Favorited' : '☆ Favorite'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="lg-prog-empty">
+            Select a channel to view live programs
+          </div>
+        )}
       </div>
 
-      {/* Clock — Top right, clean floating text matching reference photo */}
+      {/* Clock — Top right, clean plain text matching reference */}
       <div className="lg-clock">{fmtClock(clock)}</div>
 
-      {/* Keyboard hints — Bottom clean text */}
+      {/* Bottom hints */}
       <div className="lg-hints">
-        <span><kbd>↑↓</kbd> Navigate</span>
+        <span><kbd>↑↓</kbd> Scroll</span>
+        <span><kbd>PgUp/PgDn</kbd> Jump 10</span>
         <span><kbd>Enter</kbd> Watch</span>
         <span><kbd>F</kbd> Favorite</span>
         <span><kbd>[</kbd> Sidebar</span>

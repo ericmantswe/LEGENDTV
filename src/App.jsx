@@ -6,7 +6,7 @@ import RemoteControl from './components/RemoteControl.jsx';
 import ApiBrowser from './components/ApiBrowser.jsx';
 import CountryModal from './components/CountryModal.jsx';
 import { DEFAULT_CHANNELS } from './data/defaultChannels.js';
-import { loadCountryChannels } from './utils/iptvApi.js';
+import { loadCountryChannels, loadAllGlobalChannels } from './utils/iptvApi.js';
 import { sounds } from './utils/audioFX.js';
 import './App.css';
 
@@ -42,6 +42,29 @@ export default function App() {
   const bannerTimer = useRef(null);
 
   const currentChannel = channels[channelIndex] || channels[0];
+
+  /* ── Background loader for full global directory (1,500+ channels) ── */
+  useEffect(() => {
+    let active = true;
+    loadAllGlobalChannels(1500)
+      .then((globalList) => {
+        if (!active || !globalList || globalList.length === 0) return;
+        const defaultUrls = new Set(DEFAULT_CHANNELS.map(c => c.url));
+        const filtered = globalList.filter(c => !defaultUrls.has(c.url));
+        const combined = [
+          ...DEFAULT_CHANNELS,
+          ...filtered.map((c, i) => ({
+            ...c,
+            number: DEFAULT_CHANNELS.length + i + 1,
+          })),
+        ];
+        setChannels(prev => (prev.length <= DEFAULT_CHANNELS.length ? combined : prev));
+      })
+      .catch((err) => {
+        console.warn('Could not load global directory:', err);
+      });
+    return () => { active = false; };
+  }, []);
 
   /* ── Fullscreen tracking ───────────────────────────────── */
   useEffect(() => {
@@ -116,9 +139,30 @@ export default function App() {
   const handleSelectCountry = useCallback(async (code, name, flag) => {
     sounds.playClick();
     if (!code) {
-      setActiveCountry(null); setActiveCountryName('Global'); setActiveCountryFlag('🌐');
-      setChannels(DEFAULT_CHANNELS); setChannelIndex(0);
-      sounds.playGuideSound(true); return;
+      setActiveCountry(null);
+      setActiveCountryName('Global Lineup');
+      setActiveCountryFlag('🌐');
+      setIsLoadingCountry(true);
+      try {
+        const globalList = await loadAllGlobalChannels(1500);
+        const defaultUrls = new Set(DEFAULT_CHANNELS.map(c => c.url));
+        const filtered = globalList.filter(c => !defaultUrls.has(c.url));
+        const combined = [
+          ...DEFAULT_CHANNELS,
+          ...filtered.map((c, i) => ({
+            ...c,
+            number: DEFAULT_CHANNELS.length + i + 1,
+          })),
+        ];
+        setChannels(combined);
+      } catch {
+        setChannels(DEFAULT_CHANNELS);
+      } finally {
+        setIsLoadingCountry(false);
+      }
+      setChannelIndex(0);
+      sounds.playGuideSound(true);
+      return;
     }
     setIsLoadingCountry(true);
     setActiveCountry(code); setActiveCountryName(name); setActiveCountryFlag(flag);
