@@ -26,7 +26,13 @@ export default function RemoteControl({
 
   return (
     <div className="remote-control">
-      <div className="remote-brand">LEGEND TV</div>
+      <div className="remote-brand">
+        <img
+          src="/Vibrant%20legendER%20TV%20Gradient%20Logo.png"
+          alt="LEGEND ER TV"
+          className="rc-brand-logo"
+        />
+      </div>
 
       {/* Power row */}
       <div className="rc-row">

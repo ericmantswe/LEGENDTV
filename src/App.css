@@ -226,16 +226,12 @@ html, body, #root {
   gap: 14px;
 }
 
-.brand-legend {
-  font-size: 24px;
-  font-weight: 800;
-  color: #fff;
-  letter-spacing: -0.5px;
-}
-
-.brand-er {
-  color: #93c5fd;
-  font-weight: 600;
+.top-brand-logo-img {
+  height: 34px;
+  width: auto;
+  max-width: 140px;
+  object-fit: contain;
+  display: block;
 }
 
 .brand-channel-badge {
@@ -557,6 +553,21 @@ html, body, #root {
   color: #fff;
   cursor: pointer;
   font-size: 14px;
+}
+
+.remote-brand {
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(14, 16, 20, 0.4);
+}
+
+.rc-brand-logo {
+  height: 24px;
+  width: auto;
+  max-width: 120px;
+  object-fit: contain;
 }
 
 /* ============================================================

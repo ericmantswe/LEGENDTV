@@ -1,17 +1,23 @@
 import { useEffect, useState } from 'react';
-import { getCurrentAndNextProgram, formatTimeRange } from '../utils/epgGenerator.js';
+import { formatTimeRange } from '../utils/epgGenerator.js';
+import { getLiveCurrentAndNext } from '../utils/epgService.js';
 
-export default function ChannelBanner({ channel, visible, onOpenGuide }) {
+export default function ChannelBanner({ channel, visible, onOpenGuide, activeCountry = 'US' }) {
   const [epg, setEpg] = useState(null);
 
   useEffect(() => {
     if (!channel) return;
-    setEpg(getCurrentAndNextProgram(channel, new Date()));
+    let active = true;
+    getLiveCurrentAndNext(channel, activeCountry).then(data => {
+      if (active) setEpg(data);
+    });
     const interval = setInterval(() => {
-      setEpg(getCurrentAndNextProgram(channel, new Date()));
+      getLiveCurrentAndNext(channel, activeCountry).then(data => {
+        if (active) setEpg(data);
+      });
     }, 30000);
-    return () => clearInterval(interval);
-  }, [channel]);
+    return () => { active = false; clearInterval(interval); };
+  }, [channel, activeCountry]);
 
   if (!channel) return null;
 

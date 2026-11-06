@@ -5,6 +5,7 @@ import LegendGuide from './components/LegendGuide.jsx';
 import RemoteControl from './components/RemoteControl.jsx';
 import ApiBrowser from './components/ApiBrowser.jsx';
 import CountryModal from './components/CountryModal.jsx';
+import BootSplash from './components/BootSplash.jsx';
 import { DEFAULT_CHANNELS } from './data/defaultChannels.js';
 import { loadCountryChannels, loadAllGlobalChannels } from './utils/iptvApi.js';
 import { sounds } from './utils/audioFX.js';
@@ -42,6 +43,7 @@ export default function App() {
   const [captionsEnabled,   setCaptionsEnabled]    = useState(() => {
     try { return localStorage.getItem('legend_captions') !== 'false'; } catch { return true; }
   });
+  const [isBooting,         setIsBooting]          = useState(true);
   const bannerTimer = useRef(null);
 
   const currentChannel = channels[channelIndex] || channels[0];
@@ -286,9 +288,11 @@ export default function App() {
           {/* Top bar — appears on hover */}
           <div className="fullscreen-top-bar">
             <div className="top-brand">
-              <span className="brand-legend">
-                LEGEND<span className="brand-er"> ER</span> TV
-              </span>
+              <img
+                src="/Vibrant%20legendER%20TV%20Gradient%20Logo.png"
+                alt="LEGEND ER TV"
+                className="top-brand-logo-img"
+              />
               <span className="brand-channel-badge">
                 CH {currentChannel?.number} • {currentChannel?.callsign || currentChannel?.name}
               </span>
@@ -335,9 +339,13 @@ export default function App() {
             channel={currentChannel}
             visible={showBanner}
             onOpenGuide={toggleGuide}
+            activeCountry={activeCountry}
           />
         </div>
       )}
+
+      {/* First Boot Loading Screen with Vibrant Logo */}
+      {isBooting && <BootSplash onComplete={() => setIsBooting(false)} />}
 
       {/* Country loading toast */}
       {isLoadingCountry && (

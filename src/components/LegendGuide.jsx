@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { getCurrentAndNextProgram, formatTimeRange } from '../utils/epgGenerator.js';
+import { getLiveCurrentAndNext, loadWeeklySchedule, getNetworkKeywords } from '../utils/epgService.js';
+import WeekScheduleModal from './WeekScheduleModal.jsx';
 import { sounds } from '../utils/audioFX.js';
 import {
   Tv,
@@ -8,6 +10,7 @@ import {
   Globe,
   Sliders,
   Settings,
+  Calendar,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -39,6 +42,7 @@ export default function LegendGuide({
   onOpenCountryModal,
   onOpenApiBrowser,
   onShowRemote,
+  activeCountry,
   activeCountryFlag,
   activeCountryName,
   captionsEnabled = true,
@@ -46,6 +50,9 @@ export default function LegendGuide({
 }) {
   const [tab, setTab] = useState('live');
   const [query, setQuery] = useState('');
+  const [liveEpg, setLiveEpg] = useState(null);
+  const [showWeekModal, setShowWeekModal] = useState(false);
+  const [channelNowTitles, setChannelNowTitles] = useState({});
   const [isCollapsed, setIsCollapsed] = useState(() => {
     try {
       return localStorage.getItem('legend_sidebar_collapsed') === 'true';
@@ -177,6 +184,13 @@ export default function LegendGuide({
           e.preventDefault();
           onToggleCaptions?.();
           break;
+        case 'w':
+        case 'W':
+          if (inp) return;
+          e.preventDefault();
+          sounds.playClick();
+          setShowWeekModal(s => !s);
+          break;
         case '[':
           if (inp) return;
           e.preventDefault();
@@ -198,11 +212,50 @@ export default function LegendGuide({
     return () => window.removeEventListener('keydown', onKey);
   }, [list, safeIdx, selectedChannel, watchCh, onCloseGuide, onToggleFavorite, toggleSidebar, onToggleCaptions]);
 
-  /* EPG details for the selected channel */
-  const epg = useMemo(() => {
-    if (!selectedChannel) return null;
-    return getCurrentAndNextProgram(selectedChannel, new Date());
-  }, [selectedChannel]);
+  /* ── Real Live Broadcast EPG for the selected channel ───── */
+  useEffect(() => {
+    let active = true;
+    if (!selectedChannel) { setLiveEpg(null); return; }
+
+    getLiveCurrentAndNext(selectedChannel, activeCountry || 'US', new Date())
+      .then(data => {
+        if (active) setLiveEpg(data);
+      })
+      .catch(() => {
+        if (active) setLiveEpg(null);
+      });
+
+    return () => { active = false; };
+  }, [selectedChannel, activeCountry]);
+
+  /* ── Background loader for channel current show titles ─── */
+  useEffect(() => {
+    let active = true;
+    loadWeeklySchedule(activeCountry || 'US').then(schedule => {
+      if (!active || !schedule?.showsByNetwork) return;
+      const nowMs = Date.now();
+      const map = {};
+      for (const ch of channels.slice(0, 80)) {
+        const keywords = getNetworkKeywords(ch);
+        for (const net in schedule.showsByNetwork) {
+          const netLower = net.toLowerCase();
+          if (keywords.some(k => netLower.includes(k) || k.includes(netLower))) {
+            const shows = schedule.showsByNetwork[net];
+            const cur = shows.find(s => nowMs >= s.startTime.getTime() && nowMs < s.endTime.getTime()) || shows[0];
+            if (cur) {
+              map[ch.number] = cur.title;
+              break;
+            }
+          }
+        }
+      }
+      setChannelNowTitles(map);
+    });
+    return () => { active = false; };
+  }, [channels, activeCountry]);
+
+  /* Combined EPG (live broadcast schedule or channel metadata) */
+  const epg = liveEpg || getCurrentAndNextProgram(selectedChannel, new Date());
 
   const isCurrentChannelLive = selectedChannel?.number === currentChannel?.number;
   const isSelectedFav = selectedChannel ? favorites.includes(selectedChannel.number) : false;
@@ -233,8 +286,15 @@ export default function LegendGuide({
 
         {/* Collapsible Sidebar */}
         <nav className="lg-sidebar">
-          {/* Header with Sidebar Collapse Toggle */}
+          {/* Header with Sidebar Collapse Toggle & Logo */}
           <div className="lg-sidebar-top">
+            {!isCollapsed && (
+              <img
+                src="/Vibrant%20legendER%20TV%20Gradient%20Logo.png"
+                alt="LEGEND ER TV"
+                className="lg-sidebar-brand-img"
+              />
+            )}
             <button
               className="lg-collapse-btn"
               onClick={toggleSidebar}
@@ -350,6 +410,11 @@ export default function LegendGuide({
                           </span>
                         )}
                       </div>
+                      {channelNowTitles[ch.number] && (
+                        <span className="lg-row-now-title" title={channelNowTitles[ch.number]}>
+                          {channelNowTitles[ch.number]}
+                        </span>
+                      )}
                       <button
                         className={`lg-fav-star ${isFav ? 'lg-fav-active' : ''}`}
                         onClick={e => {
@@ -431,6 +496,16 @@ export default function LegendGuide({
               >
                 {isSelectedFav ? '★ Favorited' : '☆ Favorite'}
               </button>
+              <button
+                className="lg-action-week"
+                onClick={() => {
+                  sounds.playClick();
+                  setShowWeekModal(true);
+                }}
+                title="View 7-day schedule (W)"
+              >
+                📅 Shows for the Week (W)
+              </button>
               {onToggleCaptions && (
                 <button
                   className={`lg-action-cc ${captionsEnabled ? 'lg-action-cc-active' : ''}`}
@@ -461,10 +536,20 @@ export default function LegendGuide({
         <span><kbd>PgUp/PgDn</kbd> Jump 10</span>
         <span><kbd>Enter</kbd> Watch</span>
         <span><kbd>F</kbd> Favorite</span>
+        <span><kbd>W</kbd> Week Schedule</span>
         <span><kbd>C</kbd> CC ({captionsEnabled ? 'ON' : 'OFF'})</span>
         <span><kbd>[</kbd> Sidebar</span>
         <span><kbd>G</kbd> Close</span>
       </div>
+
+      {/* ── 7-Day Weekly Broadcast Schedule Modal ── */}
+      {showWeekModal && (
+        <WeekScheduleModal
+          channel={selectedChannel}
+          countryCode={activeCountry || 'US'}
+          onClose={() => setShowWeekModal(false)}
+        />
+      )}
     </div>
   );
 }
