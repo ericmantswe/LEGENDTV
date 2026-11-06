@@ -490,13 +490,43 @@
   margin-top: 4px;
 }
 
-/* Next up block */
+/* Program metadata badges (when no EPG program schedule is provided by the API) */
+.lg-prog-meta-tags {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.lg-tag-live {
+  background: var(--blue-solid);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  padding: 3px 8px;
+  border-radius: 2px;
+  border: none;
+  text-transform: uppercase;
+}
+
+.lg-tag-meta {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 2px;
+  border: none;
+}
+
+/* Next up block — transparent border, color differentiated */
 .lg-prog-next-block {
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding-top: 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border: none;
 }
 
 .lg-title-next {
@@ -562,6 +592,30 @@
 .lg-action-fav-active {
   background: rgba(245, 158, 11, 0.25);
   color: var(--text-gold);
+}
+
+.lg-action-cc {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: #e2e8f0;
+  padding: 10px 18px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: background 0.12s;
+  font-family: inherit;
+}
+
+.lg-action-cc:hover {
+  background: var(--charcoal-hover);
+  color: #fff;
+}
+
+.lg-action-cc-active {
+  background: var(--blue-solid) !important;
+  color: #fff !important;
 }
 
 .lg-prog-empty {

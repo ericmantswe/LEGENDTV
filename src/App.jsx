@@ -39,6 +39,9 @@ export default function App() {
   const [numpadTimeout,     setNumpadTimeout]      = useState(null);
   const [isFullscreen,      setIsFullscreen]       = useState(false);
   const [favorites,         setFavorites]          = useState(readFavs);
+  const [captionsEnabled,   setCaptionsEnabled]    = useState(() => {
+    try { return localStorage.getItem('legend_captions') !== 'false'; } catch { return true; }
+  });
   const bannerTimer = useRef(null);
 
   const currentChannel = channels[channelIndex] || channels[0];
@@ -135,6 +138,16 @@ export default function App() {
     });
   }, []);
 
+  /* ── Auto English Captions ──────────────────────────────── */
+  const toggleCaptions = useCallback(() => {
+    sounds.playClick();
+    setCaptionsEnabled(prev => {
+      const next = !prev;
+      try { localStorage.setItem('legend_captions', String(next)); } catch {}
+      return next;
+    });
+  }, []);
+
   /* ── Country loader ────────────────────────────────────── */
   const handleSelectCountry = useCallback(async (code, name, flag) => {
     sounds.playClick();
@@ -195,7 +208,7 @@ export default function App() {
         case 'f': case 'F': e.preventDefault(); toggleFullscreen(); break;
         case 'm': case 'M':                     toggleMute();       break;
         case 'g': case 'G': e.preventDefault(); toggleGuide();      break;
-        case 'c': case 'C': setShowCountryModal(s => !s);           break;
+        case 'c': case 'C': e.preventDefault(); toggleCaptions();   break;
         case 'i': case 'I': setShowBanner(b => !b);                 break;
         case 'r': case 'R': setShowRemote(r => !r);                 break;
         case 'Escape':
@@ -221,7 +234,7 @@ export default function App() {
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [isGuideOpen, showApiBrowser, showCountryModal, channelUp, channelDown, volumeUp,
-      volumeDown, toggleMute, toggleGuide, toggleFullscreen, onScreenNum, numpadTimeout,
+      volumeDown, toggleMute, toggleGuide, toggleFullscreen, toggleCaptions, onScreenNum, numpadTimeout,
       channels, switchToChannel]);
 
   /* ── Render ─────────────────────────────────────────────── */
@@ -230,7 +243,12 @@ export default function App() {
 
       {/* Video fills the full screen at all times */}
       <div className="legend-tv-bg">
-        <VideoPlayer channel={currentChannel} volume={volume} isMuted={isMuted} />
+        <VideoPlayer
+          channel={currentChannel}
+          volume={volume}
+          isMuted={isMuted}
+          captionsEnabled={captionsEnabled}
+        />
       </div>
 
       {/* Guide overlay */}
@@ -253,6 +271,8 @@ export default function App() {
           activeCountryFlag={activeCountryFlag}
           isFullscreen={isFullscreen}
           onToggleFullscreen={toggleFullscreen}
+          captionsEnabled={captionsEnabled}
+          onToggleCaptions={toggleCaptions}
         />
       )}
 
@@ -274,6 +294,13 @@ export default function App() {
               </span>
             </div>
             <div className="top-actions">
+              <button
+                className={`top-btn ${captionsEnabled ? 'top-btn-active' : ''}`}
+                onClick={e => { e.stopPropagation(); toggleCaptions(); }}
+                title="Toggle English Captions (C)"
+              >
+                {captionsEnabled ? '💬 CC: ON' : '💬 CC: OFF'}
+              </button>
               <button className="top-btn" onClick={e => { e.stopPropagation(); setShowCountryModal(true); }}>
                 {activeCountryFlag} Country
               </button>
@@ -343,6 +370,8 @@ export default function App() {
             onMute={toggleMute}
             onGuide={toggleGuide}
             onInfo={showBannerBriefly}
+            onToggleCaptions={toggleCaptions}
+            captionsEnabled={captionsEnabled}
             isMuted={isMuted}
             volume={volume}
             currentChannel={currentChannel}

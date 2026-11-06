@@ -19,24 +19,42 @@ function makeProxyFetchSetup(httpReferrer, userAgent) {
   };
 }
 
-export default function VideoPlayer({ channel, volume, isMuted }) {
-  const videoRef = useRef(null);
-  const hlsRef  = useRef(null);
-  const [status, setStatus] = useState('loading'); // loading | playing | error | unsupported
+const SpeechRecognition = typeof window !== 'undefined'
+  ? (window.SpeechRecognition || window.webkitSpeechRecognition)
+  : null;
 
+export default function VideoPlayer({ channel, volume, isMuted, captionsEnabled = true }) {
+  const videoRef = useRef(null);
+  const hlsRef   = useRef(null);
+  const recognitionRef = useRef(null);
+  const [status, setStatus] = useState('loading'); // loading | playing | error | unsupported
+  const [activeCaption, setActiveCaption] = useState('');
+  const captionTimerRef = useRef(null);
+
+  /* Helper to set caption with auto-clear after 5 seconds of silence */
+  const pushCaption = (text) => {
+    if (!text || !text.trim()) return;
+    setActiveCaption(text.trim());
+    if (captionTimerRef.current) clearTimeout(captionTimerRef.current);
+    captionTimerRef.current = setTimeout(() => {
+      setActiveCaption('');
+    }, 5000);
+  };
+
+  /* ── HLS / Video Stream Lifecycle ───────────────────────── */
   useEffect(() => {
     if (!channel?.url) { setStatus('error'); return; }
     const video = videoRef.current;
     if (!video) return;
 
-    // Tear down previous instance
     if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
     setStatus('loading');
+    setActiveCaption('');
 
     if (Hls.isSupported()) {
       const fetchSetup = makeProxyFetchSetup(channel.httpReferrer, channel.userAgent);
       const hls = new Hls({
-        enableWorker: false,          // keep off to avoid worker CORS issues
+        enableWorker: false,
         lowLatencyMode: false,
         backBufferLength: 30,
         startLevel: -1,
@@ -44,6 +62,7 @@ export default function VideoPlayer({ channel, volume, isMuted }) {
         levelLoadingMaxRetry: 3,
         fragLoadingMaxRetry: 4,
         fetchSetup,
+        renderTextTracksNatively: false, // Custom caption rendering
       });
       hlsRef.current = hls;
 
@@ -53,6 +72,36 @@ export default function VideoPlayer({ channel, volume, isMuted }) {
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         video.play().catch(() => {});
         setStatus('playing');
+
+        // Look for English subtitle tracks in HLS manifest
+        if (hls.subtitleTracks && hls.subtitleTracks.length > 0) {
+          const enIdx = hls.subtitleTracks.findIndex(t =>
+            t.lang?.toLowerCase().startsWith('en') || t.name?.toLowerCase().includes('english')
+          );
+          if (enIdx !== -1) {
+            hls.subtitleTrack = enIdx;
+          }
+        }
+      });
+
+      // Handle subtitle cues when HLS subtitles fire
+      hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, (_, data) => {
+        if (!data.subtitleTracks) return;
+        const enIdx = data.subtitleTracks.findIndex(t =>
+          t.lang?.toLowerCase().startsWith('en') || t.name?.toLowerCase().includes('english')
+        );
+        if (enIdx !== -1 && captionsEnabled) {
+          hls.subtitleTrack = enIdx;
+        }
+      });
+
+      // CEA-608 / CEA-708 closed captions cues
+      hls.on(Hls.Events.CUES_PARSED, (_, data) => {
+        if (!captionsEnabled) return;
+        if (data.cues && data.cues.length > 0) {
+          const text = data.cues.map(c => c.text).filter(Boolean).join(' ');
+          if (text) pushCaption(text);
+        }
       });
 
       let netRetries = 0;
@@ -76,7 +125,7 @@ export default function VideoPlayer({ channel, volume, isMuted }) {
       });
 
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      // Native HLS (Safari) — route via proxy too
+      // Native HLS (Safari)
       video.src = `/api/cors-proxy?url=${encodeURIComponent(channel.url)}`;
       video.addEventListener('loadedmetadata', () => {
         video.play().catch(() => {});
@@ -90,10 +139,91 @@ export default function VideoPlayer({ channel, volume, isMuted }) {
     return () => {
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
       if (video) { video.pause(); video.src = ''; }
+      if (captionTimerRef.current) clearTimeout(captionTimerRef.current);
     };
   }, [channel?.url, channel?.httpReferrer, channel?.userAgent]);
 
-  // Volume / mute sync
+  /* ── Native TextTracks listener (for CEA-608 & WebVTT) ─── */
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !video.textTracks) return;
+
+    const handleCueChange = (e) => {
+      if (!captionsEnabled) return;
+      const track = e.target;
+      if (track.activeCues && track.activeCues.length > 0) {
+        const text = Array.from(track.activeCues).map(c => c.text).join(' ');
+        if (text) pushCaption(text);
+      }
+    };
+
+    const tracks = video.textTracks;
+    for (let i = 0; i < tracks.length; i++) {
+      const tr = tracks[i];
+      if (tr.language?.startsWith('en') || tr.kind === 'captions' || tr.kind === 'subtitles') {
+        tr.mode = captionsEnabled ? 'hidden' : 'disabled'; // hidden allows cue events to fire for custom render
+        tr.addEventListener('cuechange', handleCueChange);
+      }
+    }
+
+    return () => {
+      for (let i = 0; i < tracks.length; i++) {
+        tracks[i].removeEventListener('cuechange', handleCueChange);
+      }
+    };
+  }, [captionsEnabled, status]);
+
+  /* ── Live Auto English Speech Recognition (Web Speech API) ── */
+  useEffect(() => {
+    if (!captionsEnabled || !SpeechRecognition) return;
+
+    let stopped = false;
+    let rec = null;
+
+    try {
+      rec = new SpeechRecognition();
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.lang = 'en-US';
+
+      rec.onresult = (event) => {
+        if (stopped) return;
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        if (transcript) {
+          pushCaption(transcript);
+        }
+      };
+
+      rec.onerror = (e) => {
+        // Ignored gracefully (e.g. no-speech or network)
+        if (e.error === 'no-speech' || e.error === 'aborted') return;
+      };
+
+      rec.onend = () => {
+        if (!stopped && captionsEnabled) {
+          try { rec.start(); } catch {}
+        }
+      };
+
+      rec.start();
+      recognitionRef.current = rec;
+    } catch {
+      // Speech recognition not permitted or supported
+    }
+
+    return () => {
+      stopped = true;
+      if (rec) {
+        try { rec.stop(); } catch {}
+      }
+      recognitionRef.current = null;
+    };
+  }, [captionsEnabled, channel?.number]);
+
+  /* ── Volume / mute sync ─────────────────────────────────── */
   useEffect(() => {
     if (videoRef.current) {
       videoRef.current.volume = volume / 100;
@@ -116,6 +246,14 @@ export default function VideoPlayer({ channel, volume, isMuted }) {
           opacity: status === 'playing' ? 1 : 0,
         }}
       />
+
+      {/* ── Live Auto English Captions Overlay ── */}
+      {captionsEnabled && activeCaption && (
+        <div className="live-captions-container">
+          <span className="live-caption-badge">CC [EN]</span>
+          <span className="live-caption-text">{activeCaption}</span>
+        </div>
+      )}
 
       {status === 'loading' && (
         <div className="video-overlay loading-overlay">

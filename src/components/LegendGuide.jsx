@@ -41,6 +41,8 @@ export default function LegendGuide({
   onShowRemote,
   activeCountryFlag,
   activeCountryName,
+  captionsEnabled = true,
+  onToggleCaptions,
 }) {
   const [tab, setTab] = useState('live');
   const [query, setQuery] = useState('');
@@ -169,6 +171,12 @@ export default function LegendGuide({
             sounds.playClick();
           }
           break;
+        case 'c':
+        case 'C':
+          if (inp) return;
+          e.preventDefault();
+          onToggleCaptions?.();
+          break;
         case '[':
           if (inp) return;
           e.preventDefault();
@@ -188,7 +196,7 @@ export default function LegendGuide({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [list, safeIdx, selectedChannel, watchCh, onCloseGuide, onToggleFavorite, toggleSidebar]);
+  }, [list, safeIdx, selectedChannel, watchCh, onCloseGuide, onToggleFavorite, toggleSidebar, onToggleCaptions]);
 
   /* EPG details for the selected channel */
   const epg = useMemo(() => {
@@ -366,25 +374,36 @@ export default function LegendGuide({
       <div className="lg-program-column">
         {selectedChannel ? (
           <div className="lg-prog-panel">
-            {/* Main Program Title & Status */}
+            {/* Main Program Title & Status — ONLY show program info if provided by API */}
             <div className="lg-prog-main-block">
               <h1 className="lg-title-current">
                 {epg?.current?.title || selectedChannel.name}
               </h1>
-              <p className="lg-label-on-now">On Now</p>
 
-              {epg?.current?.description && (
-                <p className="lg-prog-synopsis">{epg.current.description}</p>
-              )}
-
-              {epg?.current && (
-                <p className="lg-prog-time">
-                  {formatTimeRange(epg.current.startTime, epg.current.endTime)}
-                </p>
+              {epg?.current ? (
+                <>
+                  <p className="lg-label-on-now">On Now</p>
+                  {epg.current.description && (
+                    <p className="lg-prog-synopsis">{epg.current.description}</p>
+                  )}
+                  <p className="lg-prog-time">
+                    {formatTimeRange(epg.current.startTime, epg.current.endTime)}
+                  </p>
+                </>
+              ) : (
+                <div className="lg-prog-meta-tags">
+                  <span className="lg-tag-live">LIVE STREAM</span>
+                  {selectedChannel.category && (
+                    <span className="lg-tag-meta">{selectedChannel.category}</span>
+                  )}
+                  {selectedChannel.country && (
+                    <span className="lg-tag-meta">{selectedChannel.country}</span>
+                  )}
+                </div>
               )}
             </div>
 
-            {/* Next Program Up */}
+            {/* Next Program Up — ONLY if genuine epg?.next exists */}
             {epg?.next && (
               <div className="lg-prog-next-block">
                 <p className="lg-title-next">{epg.next.title}</p>
@@ -412,11 +431,23 @@ export default function LegendGuide({
               >
                 {isSelectedFav ? '★ Favorited' : '☆ Favorite'}
               </button>
+              {onToggleCaptions && (
+                <button
+                  className={`lg-action-cc ${captionsEnabled ? 'lg-action-cc-active' : ''}`}
+                  onClick={() => {
+                    onToggleCaptions();
+                    sounds.playClick();
+                  }}
+                  title="Toggle English Captions (C)"
+                >
+                  CC {captionsEnabled ? 'ON' : 'OFF'}
+                </button>
+              )}
             </div>
           </div>
         ) : (
           <div className="lg-prog-empty">
-            Select a channel to view live programs
+            Select a channel to tune
           </div>
         )}
       </div>
@@ -430,6 +461,7 @@ export default function LegendGuide({
         <span><kbd>PgUp/PgDn</kbd> Jump 10</span>
         <span><kbd>Enter</kbd> Watch</span>
         <span><kbd>F</kbd> Favorite</span>
+        <span><kbd>C</kbd> CC ({captionsEnabled ? 'ON' : 'OFF'})</span>
         <span><kbd>[</kbd> Sidebar</span>
         <span><kbd>G</kbd> Close</span>
       </div>

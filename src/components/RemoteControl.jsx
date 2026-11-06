@@ -8,6 +8,8 @@ export default function RemoteControl({
   onMute,
   onGuide,
   onInfo,
+  onToggleCaptions,
+  captionsEnabled = true,
   isMuted,
   volume,
   currentChannel,
@@ -34,10 +36,11 @@ export default function RemoteControl({
         </button>
       </div>
 
-      {/* Guide + Info */}
+      {/* Guide + Info + CC */}
       <div className="rc-row">
-        {btn('GUIDE', onGuide, 'rc-wide rc-guide-btn')}
-        {btn('INFO', onInfo, 'rc-wide')}
+        {btn('GUIDE', onGuide, 'rc-guide-btn')}
+        {btn('INFO', onInfo)}
+        {onToggleCaptions && btn(captionsEnabled ? 'CC ON' : 'CC OFF', onToggleCaptions, captionsEnabled ? 'rc-cc-active' : '')}
       </div>
 
       {/* Channel up/down */}

@@ -43,29 +43,35 @@ export default function ChannelBanner({ channel, visible, onOpenGuide }) {
       <div className="osd-center-info">
         <div className="osd-prog-top">
           <span className="osd-prog-title">{current?.title || channel.name}</span>
-          <span className="osd-prog-rating">{current?.rating || 'TV-PG'}</span>
+          {current?.rating && <span className="osd-prog-rating">{current.rating}</span>}
           <span className="osd-badge-hd">HD</span>
         </div>
 
-        <div className="osd-prog-desc">
-          {current?.description || channel.description}
-        </div>
+        {current?.description ? (
+          <div className="osd-prog-desc">{current.description}</div>
+        ) : channel.category ? (
+          <div className="osd-prog-desc">{channel.category}{channel.country ? ` • ${channel.country}` : ''}</div>
+        ) : null}
 
-        {/* Xfinity yellow progress bar */}
-        <div className="osd-progress-row">
-          <span className="osd-prog-time">
-            {current ? formatTimeRange(current.startTime, current.endTime) : ''}
-          </span>
-          <div className="osd-progress-track">
-            <div
-              className="osd-progress-fill"
-              style={{ width: `${progressPercent || 25}%` }}
-            />
+        {/* Progress bar — ONLY if genuine current program exists */}
+        {current && (
+          <div className="osd-progress-row">
+            <span className="osd-prog-time">
+              {formatTimeRange(current.startTime, current.endTime)}
+            </span>
+            <div className="osd-progress-track">
+              <div
+                className="osd-progress-fill"
+                style={{ width: `${progressPercent || 0}%` }}
+              />
+            </div>
+            {remainingMinutes > 0 && (
+              <span className="osd-prog-remaining">
+                {remainingMinutes} min left
+              </span>
+            )}
           </div>
-          <span className="osd-prog-remaining">
-            {remainingMinutes ? `${remainingMinutes} min left` : ''}
-          </span>
-        </div>
+        )}
       </div>
 
       {/* Right: Next Up & Guide Button */}
